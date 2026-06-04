@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+  <NPCStyleLimiter_Category>NPC 样式限制器</NPCStyleLimiter_Category>
+  <NPCStyleLimiter_HairStyles>发型列表</NPCStyleLimiter_HairStyles>
+  <NPCStyleLimiter_BeardStyles>胡须列表</NPCStyleLimiter_BeardStyles>
+  <NPCStyleLimiter_FilterModAll>过滤 Mod：全部</NPCStyleLimiter_FilterModAll>
+  <NPCStyleLimiter_FilterMod>过滤 Mod：{0}</NPCStyleLimiter_FilterMod>
+  <NPCStyleLimiter_AllMods>全部 Mod</NPCStyleLimiter_AllMods>
+  <NPCStyleLimiter_AllowAll>允许全部</NPCStyleLimiter_AllowAll>
+  <NPCStyleLimiter_DisallowAll>禁用全部</NPCStyleLimiter_DisallowAll>
+  <NPCStyleLimiter_SaveChanges>保存修改</NPCStyleLimiter_SaveChanges>
+  <NPCStyleLimiter_SettingsSaved>NPC 样式限制器设置已保存。</NPCStyleLimiter_SettingsSaved>
+  <NPCStyleLimiter_UseGenderConfig>分性别配置</NPCStyleLimiter_UseGenderConfig>
+  <NPCStyleLimiter_Male>男性</NPCStyleLimiter_Male>
+  <NPCStyleLimiter_Female>女性</NPCStyleLimiter_Female>
+  <NPCStyleLimiter_AdjustGenderRatio>自定义男女比例</NPCStyleLimiter_AdjustGenderRatio>
+  <NPCStyleLimiter_MaleRatioLabel>男:{0} / 女:{1}</NPCStyleLimiter_MaleRatioLabel>
+  <NPCStyleLimiter_Apparel>服装列表</NPCStyleLimiter_Apparel>
+  <NPCStyleLimiter_BodyTypes>体型列表</NPCStyleLimiter_BodyTypes>
+  <NPCStyleLimiter_RestoreDefaults>恢复默认设置</NPCStyleLimiter_RestoreDefaults>
+  <NPCStyleLimiter_DefaultsRestored>设置已恢复默认。</NPCStyleLimiter_DefaultsRestored>
+  <NPCStyleLimiter_NoResultsFound>没有找到匹配的选项。</NPCStyleLimiter_NoResultsFound>
+</LanguageData>

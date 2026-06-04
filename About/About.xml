@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ModMetaData>
+  <name>NPC Style Limiter</name>
+  <author>rinmiolc</author>
+  <packageId>rinmiolc.npcstylelimiter</packageId>
+  <supportedVersions>
+    <li>1.6</li>
+  </supportedVersions>
+  <description>Allows you to customize and limit NPC style generation. You can configure which hairstyles, beards, apparel, and body types can be assigned to NPCs during pawn generation, adjust their generation weights, configure them globally or separately by gender, and customize the overall spawn gender ratio. Includes a modern, fully-featured in-game settings UI with mod filters and search.</description>
+  <modDependencies>
+    <li>
+      <packageId>brrainz.harmony</packageId>
+      <displayName>Harmony</displayName>
+      <steamWorkshopUrl>steam://url/CommunityFilePage/2009130273</steamWorkshopUrl>
+      <downloadUrl>https://github.com/pardeike/HarmonyRimWorld/releases/latest</downloadUrl>
+    </li>
+  </modDependencies>
+  <loadAfter>
+    <li>brrainz.harmony</li>
+    <li>erdelf.alienraces</li>
+  </loadAfter>
+</ModMetaData>

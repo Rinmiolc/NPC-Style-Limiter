@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+  <NPCStyleLimiter_Category>NPC Style Limiter</NPCStyleLimiter_Category>
+  <NPCStyleLimiter_HairStyles>Hair Styles</NPCStyleLimiter_HairStyles>
+  <NPCStyleLimiter_BeardStyles>Beard Styles</NPCStyleLimiter_BeardStyles>
+  <NPCStyleLimiter_FilterModAll>Filter Mod: All</NPCStyleLimiter_FilterModAll>
+  <NPCStyleLimiter_FilterMod>Filter Mod: {0}</NPCStyleLimiter_FilterMod>
+  <NPCStyleLimiter_AllMods>All Mods</NPCStyleLimiter_AllMods>
+  <NPCStyleLimiter_AllowAll>Allow All</NPCStyleLimiter_AllowAll>
+  <NPCStyleLimiter_DisallowAll>Disallow All</NPCStyleLimiter_DisallowAll>
+  <NPCStyleLimiter_SaveChanges>Save Changes</NPCStyleLimiter_SaveChanges>
+  <NPCStyleLimiter_SettingsSaved>NPC Style Limiter settings saved.</NPCStyleLimiter_SettingsSaved>
+  <NPCStyleLimiter_UseGenderConfig>Configure by Gender</NPCStyleLimiter_UseGenderConfig>
+  <NPCStyleLimiter_Male>Male</NPCStyleLimiter_Male>
+  <NPCStyleLimiter_Female>Female</NPCStyleLimiter_Female>
+  <NPCStyleLimiter_AdjustGenderRatio>Adjust Gender Ratio</NPCStyleLimiter_AdjustGenderRatio>
+  <NPCStyleLimiter_MaleRatioLabel>M:{0} / F:{1}</NPCStyleLimiter_MaleRatioLabel>
+  <NPCStyleLimiter_Apparel>Apparel</NPCStyleLimiter_Apparel>
+  <NPCStyleLimiter_BodyTypes>Body Types</NPCStyleLimiter_BodyTypes>
+  <NPCStyleLimiter_RestoreDefaults>Restore Defaults</NPCStyleLimiter_RestoreDefaults>
+  <NPCStyleLimiter_DefaultsRestored>Settings restored to defaults.</NPCStyleLimiter_DefaultsRestored>
+  <NPCStyleLimiter_NoResultsFound>No matching items found.</NPCStyleLimiter_NoResultsFound>
+</LanguageData>

@@ -1,0 +1,12 @@
+# MSBuild/Visual Studio/Rider
+Source/obj/
+Source/bin/
+.vs/
+.idea/
+*.user
+*.suo
+*.sln.docstates
+
+# OS files
+.DS_Store
+Thumbs.db
