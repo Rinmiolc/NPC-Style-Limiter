@@ -89,19 +89,20 @@ namespace NPCStyleLimiter
 
             if (legacyKeys.Count == 0) return false;
 
+            bool anyMigrated = false;
             foreach (var legacyKey in legacyKeys)
             {
                 float val = dict[legacyKey];
-                dict.Remove(legacyKey);
-
                 Def def = FindDef(legacyKey);
                 if (def != null)
                 {
+                    dict.Remove(legacyKey);
                     string newKey = GetConfigKey(def);
                     dict[newKey] = val;
+                    anyMigrated = true;
                 }
             }
-            return true;
+            return anyMigrated;
         }
 
         public string GetConfigKey(Def def)
@@ -211,13 +212,13 @@ namespace NPCStyleLimiter
         {
             if (def == null) return 1.0f;
 
-            if (useGenderConfig)
+            if (useGenderConfig && gender != Gender.None)
             {
                 if (gender == Gender.Female)
                 {
                     if (runtimeWeightsFemale.TryGetValue(def, out float w)) return w;
                 }
-                else // Male or None
+                else // Male
                 {
                     if (runtimeWeightsMale.TryGetValue(def, out float w)) return w;
                 }
@@ -231,13 +232,13 @@ namespace NPCStyleLimiter
 
         public float GetWeight(string key, Gender gender)
         {
-            if (useGenderConfig)
+            if (useGenderConfig && gender != Gender.None)
             {
                 if (gender == Gender.Female)
                 {
                     if (weightsFemale != null && weightsFemale.TryGetValue(key, out float w)) return w;
                 }
-                else // Male or None
+                else // Male
                 {
                     if (weightsMale != null && weightsMale.TryGetValue(key, out float w)) return w;
                 }

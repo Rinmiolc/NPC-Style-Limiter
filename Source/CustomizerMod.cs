@@ -78,12 +78,14 @@ namespace NPCStyleLimiter
                     allHairs = new List<HairDef>();
                     foreach (var def in DefDatabase<HairDef>.AllDefsListForReading)
                     {
+                        if (def == null) continue;
                         if (def.defName != "Bald") allHairs.Add(def);
                     }
-                    allHairs.Sort((a, b) => string.Compare(a.label ?? "", b.label ?? "", StringComparison.OrdinalIgnoreCase));
+                    allHairs.Sort((a, b) => string.Compare(a?.label ?? "", b?.label ?? "", StringComparison.OrdinalIgnoreCase));
                 }
                 foreach (var def in allHairs)
                 {
+                    if (def == null) continue;
                     string modName = def.modContentPack?.Name ?? "Core";
                     if (selectedModName != "All" && modName != selectedModName) continue;
                     if (!newSearch.NullOrEmpty())
@@ -102,12 +104,14 @@ namespace NPCStyleLimiter
                     allBeards = new List<BeardDef>();
                     foreach (var def in DefDatabase<BeardDef>.AllDefsListForReading)
                     {
+                        if (def == null) continue;
                         if (def.defName != "NoBeard") allBeards.Add(def);
                     }
-                    allBeards.Sort((a, b) => string.Compare(a.label ?? "", b.label ?? "", StringComparison.OrdinalIgnoreCase));
+                    allBeards.Sort((a, b) => string.Compare(a?.label ?? "", b?.label ?? "", StringComparison.OrdinalIgnoreCase));
                 }
                 foreach (var def in allBeards)
                 {
+                    if (def == null) continue;
                     string modName = def.modContentPack?.Name ?? "Core";
                     if (selectedModName != "All" && modName != selectedModName) continue;
                     if (!newSearch.NullOrEmpty())
@@ -126,12 +130,14 @@ namespace NPCStyleLimiter
                     allApparels = new List<ThingDef>();
                     foreach (var def in DefDatabase<ThingDef>.AllDefsListForReading)
                     {
-                        if (def != null && def.IsApparel) allApparels.Add(def);
+                        if (def == null) continue;
+                        if (def.IsApparel) allApparels.Add(def);
                     }
-                    allApparels.Sort((a, b) => string.Compare(a.label ?? "", b.label ?? "", StringComparison.OrdinalIgnoreCase));
+                    allApparels.Sort((a, b) => string.Compare(a?.label ?? "", b?.label ?? "", StringComparison.OrdinalIgnoreCase));
                 }
                 foreach (var def in allApparels)
                 {
+                    if (def == null) continue;
                     string modName = def.modContentPack?.Name ?? "Core";
                     if (selectedModName != "All" && modName != selectedModName) continue;
                     if (!newSearch.NullOrEmpty())
@@ -150,12 +156,14 @@ namespace NPCStyleLimiter
                     allBodyTypes = new List<BodyTypeDef>();
                     foreach (var def in DefDatabase<BodyTypeDef>.AllDefsListForReading)
                     {
+                        if (def == null) continue;
                         if (def.defName != "Baby" && def.defName != "Child") allBodyTypes.Add(def);
                     }
-                    allBodyTypes.Sort((a, b) => string.Compare(a.label ?? "", b.label ?? "", StringComparison.OrdinalIgnoreCase));
+                    allBodyTypes.Sort((a, b) => string.Compare(a?.label ?? "", b?.label ?? "", StringComparison.OrdinalIgnoreCase));
                 }
                 foreach (var def in allBodyTypes)
                 {
+                    if (def == null) continue;
                     cachedFilteredDefs.Add(def);
                 }
             }
@@ -309,6 +317,7 @@ namespace NPCStyleLimiter
                     {
                         foreach (var def in DefDatabase<HairDef>.AllDefsListForReading)
                         {
+                            if (def == null) continue;
                             availableMods.Add(def.modContentPack?.Name ?? "Core");
                         }
                     }
@@ -316,6 +325,7 @@ namespace NPCStyleLimiter
                     {
                         foreach (var def in DefDatabase<BeardDef>.AllDefsListForReading)
                         {
+                            if (def == null) continue;
                             availableMods.Add(def.modContentPack?.Name ?? "Core");
                         }
                     }
