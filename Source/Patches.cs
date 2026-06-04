@@ -236,14 +236,17 @@ namespace NPCStyleLimiter
                     {
                         if (cachedAdultBodyTypes == null)
                         {
-                            cachedAdultBodyTypes = new List<BodyTypeDef>
+                            var list = new List<BodyTypeDef>();
+                            var allDefs = DefDatabase<BodyTypeDef>.AllDefsListForReading;
+                            for (int i = 0; i < allDefs.Count; i++)
                             {
-                                BodyTypeDefOf.Male,
-                                BodyTypeDefOf.Female,
-                                BodyTypeDefOf.Thin,
-                                BodyTypeDefOf.Hulk,
-                                BodyTypeDefOf.Fat
-                            };
+                                var def = allDefs[i];
+                                if (def != null && def.defName != "Baby" && def.defName != "Child")
+                                {
+                                    list.Add(def);
+                                }
+                            }
+                            cachedAdultBodyTypes = list;
                         }
                     }
                 }
@@ -340,29 +343,26 @@ namespace NPCStyleLimiter
         }
     }
 
-    // ThreadLocal tracking class to capture the Pawn currently undergoing apparel generation (Stack-based for nesting support)
-    // 线程局部变量跟踪类，用于捕获当前正在生成服装的 Pawn 实例（基于栈以支持嵌套调用）
+    // ThreadStatic tracking class to capture the Pawn currently undergoing apparel generation
+    // 线程静态变量跟踪类，用于捕获当前正在生成服装的 Pawn 实例
     [HarmonyPatch(typeof(PawnApparelGenerator), nameof(PawnApparelGenerator.GenerateStartingApparelFor))]
     public static class Patch_PawnApparelGenerator_GenerateStartingApparelFor
     {
-        private static readonly System.Threading.ThreadLocal<System.Collections.Generic.Stack<Pawn>> pawnStack = 
-            new System.Threading.ThreadLocal<System.Collections.Generic.Stack<Pawn>>(() => new System.Collections.Generic.Stack<Pawn>());
+        [ThreadStatic]
+        private static Pawn currentPawn;
 
-        public static Pawn CurrentPawn => (pawnStack.Value.Count > 0) ? pawnStack.Value.Peek() : null;
+        public static Pawn CurrentPawn => currentPawn;
 
         [HarmonyPrefix]
         public static void Prefix(Pawn pawn)
         {
-            pawnStack.Value.Push(pawn);
+            currentPawn = pawn;
         }
 
         [HarmonyFinalizer]
         public static void Finalizer()
         {
-            if (pawnStack.Value.Count > 0)
-            {
-                pawnStack.Value.Pop();
-            }
+            currentPawn = null;
         }
     }
 

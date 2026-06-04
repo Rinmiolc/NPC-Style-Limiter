@@ -9,18 +9,19 @@ namespace NPCStyleLimiter
 {
     public static class PawnGenerationState
     {
-        private static readonly ThreadLocal<int> generationDepth = new ThreadLocal<int>(() => 0);
+        [ThreadStatic]
+        private static int generationDepth;
 
-        public static bool IsGenerating => generationDepth.Value > 0;
+        public static bool IsGenerating => generationDepth > 0;
 
         public static void Enter()
         {
-            generationDepth.Value++;
+            generationDepth++;
         }
 
         public static void Exit()
         {
-            generationDepth.Value = Math.Max(0, generationDepth.Value - 1);
+            generationDepth = Math.Max(0, generationDepth - 1);
         }
     }
 }
