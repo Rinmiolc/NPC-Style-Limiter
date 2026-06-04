@@ -1,3 +1,7 @@
+// Copyright (c) 2026 rinmiolc
+// Licensed under the GNU General Public License v3.0.
+// See LICENSE file in the project root for full license information.
+
 using System.Collections.Generic;
 using Verse;
 using RimWorld;
@@ -68,17 +72,12 @@ namespace NPCStyleLimiter
                     }
                     disabledBeardNames = null;
                 }
-
-                // Migrate all legacy plain-name keys to prefixed keys to avoid duplicates and resolve collisions
-                MigrateLegacyKeys(weights);
-                MigrateLegacyKeys(weightsMale);
-                MigrateLegacyKeys(weightsFemale);
             }
         }
 
-        private void MigrateLegacyKeys(Dictionary<string, float> dict)
+        private bool MigrateLegacyKeys(Dictionary<string, float> dict)
         {
-            if (dict == null) return;
+            if (dict == null) return false;
             List<string> legacyKeys = new List<string>();
             foreach (var key in dict.Keys)
             {
@@ -87,6 +86,8 @@ namespace NPCStyleLimiter
                     legacyKeys.Add(key);
                 }
             }
+
+            if (legacyKeys.Count == 0) return false;
 
             foreach (var legacyKey in legacyKeys)
             {
@@ -100,6 +101,7 @@ namespace NPCStyleLimiter
                     dict[newKey] = val;
                 }
             }
+            return true;
         }
 
         public string GetConfigKey(Def def)
@@ -117,6 +119,14 @@ namespace NPCStyleLimiter
 
         public void ResolveRuntimeWeights()
         {
+            bool migrated = MigrateLegacyKeys(weights) || 
+                            MigrateLegacyKeys(weightsMale) || 
+                            MigrateLegacyKeys(weightsFemale);
+            if (migrated)
+            {
+                Write();
+            }
+
             runtimeWeights.Clear();
             runtimeWeightsMale.Clear();
             runtimeWeightsFemale.Clear();
@@ -289,6 +299,7 @@ namespace NPCStyleLimiter
 
         public bool IsDisabled(Def def, Gender gender)
         {
+            if (def != null && (def.defName == "Bald" || def.defName == "NoBeard")) return false;
             return GetWeight(def, gender) <= 0f;
         }
 

@@ -6,7 +6,9 @@
   <supportedVersions>
     <li>1.6</li>
   </supportedVersions>
-  <description>Allows you to customize and limit NPC style generation. You can configure which hairstyles, beards, apparel, and body types can be assigned to NPCs during pawn generation, adjust their generation weights, configure them globally or separately by gender, and customize the overall spawn gender ratio. Includes a modern, fully-featured in-game settings UI with mod filters and search.</description>
+  <description>Allows you to customize and limit NPC style generation. You can configure which hairstyles, beards, apparel, and body types can be assigned to NPCs during pawn generation, adjust their generation weights, configure them globally or separately by gender, and customize the overall spawn gender ratio. Includes a modern, fully-featured in-game settings UI with mod filters and search.
+
+Licensed under the GNU General Public License v3.</description>
   <modDependencies>
     <li>
       <packageId>brrainz.harmony</packageId>

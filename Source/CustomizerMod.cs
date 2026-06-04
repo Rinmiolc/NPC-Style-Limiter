@@ -1,3 +1,7 @@
+// Copyright (c) 2026 rinmiolc
+// Licensed under the GNU General Public License v3.0.
+// See LICENSE file in the project root for full license information.
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -72,10 +76,11 @@ namespace NPCStyleLimiter
                 if (allHairs == null)
                 {
                     allHairs = new List<HairDef>();
-                    foreach (var def in DefDatabase<HairDef>.AllDefs)
+                    foreach (var def in DefDatabase<HairDef>.AllDefsListForReading)
                     {
                         if (def.defName != "Bald") allHairs.Add(def);
                     }
+                    allHairs.Sort((a, b) => string.Compare(a.label ?? "", b.label ?? "", StringComparison.OrdinalIgnoreCase));
                 }
                 foreach (var def in allHairs)
                 {
@@ -83,8 +88,9 @@ namespace NPCStyleLimiter
                     if (selectedModName != "All" && modName != selectedModName) continue;
                     if (!newSearch.NullOrEmpty())
                     {
-                        if (def.label == null || (def.label.IndexOf(newSearch, StringComparison.OrdinalIgnoreCase) < 0 && 
-                            def.defName.IndexOf(newSearch, StringComparison.OrdinalIgnoreCase) < 0)) continue;
+                        bool labelMatch = def.label != null && def.label.IndexOf(newSearch, StringComparison.OrdinalIgnoreCase) >= 0;
+                        bool defNameMatch = def.defName != null && def.defName.IndexOf(newSearch, StringComparison.OrdinalIgnoreCase) >= 0;
+                        if (!labelMatch && !defNameMatch) continue;
                     }
                     cachedFilteredDefs.Add(def);
                 }
@@ -94,10 +100,11 @@ namespace NPCStyleLimiter
                 if (allBeards == null)
                 {
                     allBeards = new List<BeardDef>();
-                    foreach (var def in DefDatabase<BeardDef>.AllDefs)
+                    foreach (var def in DefDatabase<BeardDef>.AllDefsListForReading)
                     {
                         if (def.defName != "NoBeard") allBeards.Add(def);
                     }
+                    allBeards.Sort((a, b) => string.Compare(a.label ?? "", b.label ?? "", StringComparison.OrdinalIgnoreCase));
                 }
                 foreach (var def in allBeards)
                 {
@@ -105,8 +112,9 @@ namespace NPCStyleLimiter
                     if (selectedModName != "All" && modName != selectedModName) continue;
                     if (!newSearch.NullOrEmpty())
                     {
-                        if (def.label == null || (def.label.IndexOf(newSearch, StringComparison.OrdinalIgnoreCase) < 0 && 
-                            def.defName.IndexOf(newSearch, StringComparison.OrdinalIgnoreCase) < 0)) continue;
+                        bool labelMatch = def.label != null && def.label.IndexOf(newSearch, StringComparison.OrdinalIgnoreCase) >= 0;
+                        bool defNameMatch = def.defName != null && def.defName.IndexOf(newSearch, StringComparison.OrdinalIgnoreCase) >= 0;
+                        if (!labelMatch && !defNameMatch) continue;
                     }
                     cachedFilteredDefs.Add(def);
                 }
@@ -116,10 +124,11 @@ namespace NPCStyleLimiter
                 if (allApparels == null)
                 {
                     allApparels = new List<ThingDef>();
-                    foreach (var def in DefDatabase<ThingDef>.AllDefs)
+                    foreach (var def in DefDatabase<ThingDef>.AllDefsListForReading)
                     {
                         if (def != null && def.IsApparel) allApparels.Add(def);
                     }
+                    allApparels.Sort((a, b) => string.Compare(a.label ?? "", b.label ?? "", StringComparison.OrdinalIgnoreCase));
                 }
                 foreach (var def in allApparels)
                 {
@@ -127,8 +136,9 @@ namespace NPCStyleLimiter
                     if (selectedModName != "All" && modName != selectedModName) continue;
                     if (!newSearch.NullOrEmpty())
                     {
-                        if (def.label == null || (def.label.IndexOf(newSearch, StringComparison.OrdinalIgnoreCase) < 0 && 
-                            def.defName.IndexOf(newSearch, StringComparison.OrdinalIgnoreCase) < 0)) continue;
+                        bool labelMatch = def.label != null && def.label.IndexOf(newSearch, StringComparison.OrdinalIgnoreCase) >= 0;
+                        bool defNameMatch = def.defName != null && def.defName.IndexOf(newSearch, StringComparison.OrdinalIgnoreCase) >= 0;
+                        if (!labelMatch && !defNameMatch) continue;
                     }
                     cachedFilteredDefs.Add(def);
                 }
@@ -138,18 +148,17 @@ namespace NPCStyleLimiter
                 if (allBodyTypes == null)
                 {
                     allBodyTypes = new List<BodyTypeDef>();
-                    foreach (var def in DefDatabase<BodyTypeDef>.AllDefs)
+                    foreach (var def in DefDatabase<BodyTypeDef>.AllDefsListForReading)
                     {
                         if (def.defName != "Baby" && def.defName != "Child") allBodyTypes.Add(def);
                     }
+                    allBodyTypes.Sort((a, b) => string.Compare(a.label ?? "", b.label ?? "", StringComparison.OrdinalIgnoreCase));
                 }
                 foreach (var def in allBodyTypes)
                 {
                     cachedFilteredDefs.Add(def);
                 }
             }
-
-            cachedFilteredDefs.Sort((a, b) => string.Compare(a.label ?? "", b.label ?? "", StringComparison.OrdinalIgnoreCase));
         }
 
         public override void DoSettingsWindowContents(Rect inRect)
@@ -298,23 +307,26 @@ namespace NPCStyleLimiter
                     HashSet<string> availableMods = new HashSet<string>();
                     if (activeTab == 0)
                     {
-                        foreach (var def in DefDatabase<HairDef>.AllDefs)
+                        foreach (var def in DefDatabase<HairDef>.AllDefsListForReading)
                         {
                             availableMods.Add(def.modContentPack?.Name ?? "Core");
                         }
                     }
                     else if (activeTab == 1)
                     {
-                        foreach (var def in DefDatabase<BeardDef>.AllDefs)
+                        foreach (var def in DefDatabase<BeardDef>.AllDefsListForReading)
                         {
                             availableMods.Add(def.modContentPack?.Name ?? "Core");
                         }
                     }
                     else if (activeTab == 2)
                     {
-                        foreach (var def in DefDatabase<ThingDef>.AllDefs.Where(x => x.IsApparel))
+                        foreach (var def in DefDatabase<ThingDef>.AllDefsListForReading)
                         {
-                            availableMods.Add(def.modContentPack?.Name ?? "Core");
+                            if (def != null && def.IsApparel)
+                            {
+                                availableMods.Add(def.modContentPack?.Name ?? "Core");
+                            }
                         }
                     }
 

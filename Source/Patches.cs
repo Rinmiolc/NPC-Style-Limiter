@@ -1,3 +1,7 @@
+// Copyright (c) 2026 rinmiolc
+// Licensed under the GNU General Public License v3.0.
+// See LICENSE file in the project root for full license information.
+
 using System;
 using System.Collections.Generic;
 using HarmonyLib;
@@ -16,13 +20,14 @@ namespace NPCStyleLimiter
         {
             PawnGenerationState.Enter();
 
-            // Adjust gender ratio if enabled and request does not dictate a fixed gender
-            // 若启用了自定义男女比例，且当前请求未固定性别，则重新分配性别
-            if (CustomizerMod.Settings.adjustGenderRatio && !request.FixedGender.HasValue)
+            // Adjust gender ratio if enabled and request does not dictate a fixed gender (only for humanlikes to avoid breaking animals/mechanoids)
+            // 若启用了自定义男女比例，且当前请求未固定性别，则重新分配性别（仅针对人类，避免干扰动物和机械族）
+            if (CustomizerMod.Settings.adjustGenderRatio && !request.FixedGender.HasValue &&
+                request.KindDef?.RaceProps != null && request.KindDef.RaceProps.Humanlike)
             {
                 // Do not override if the specific PawnKindDef has a fixed gender requirement
                 // 若该具体角色类型 (PawnKindDef) 自身有硬性性别限制，则不予干预
-                if (request.KindDef != null && request.KindDef.fixedGender.HasValue)
+                if (request.KindDef.fixedGender.HasValue)
                 {
                     return;
                 }
@@ -106,10 +111,11 @@ namespace NPCStyleLimiter
 
         private static HairDef GetFallbackHairFor(Pawn pawn)
         {
-            if (pawn == null) return HairDefOf.Bald;
+            HairDef systemBald = HairDefOf.Bald ?? DefDatabase<HairDef>.GetNamedSilentFail("Bald");
+            if (pawn == null) return systemBald;
 
             List<HairDef> allHairs = DefDatabase<HairDef>.AllDefsListForReading;
-            if (allHairs.Count == 0) return HairDefOf.Bald;
+            if (allHairs.Count == 0) return systemBald;
 
             // Zero-allocation wrap-around search starting from a random index
             // 零分配的环绕式检索，从随机的起始索引开始
@@ -142,7 +148,73 @@ namespace NPCStyleLimiter
                 }
             }
 
-            return absoluteFallback ?? HairDefOf.Bald;
+            return absoluteFallback ?? systemBald ?? allHairs[0];
+        }
+    }
+
+    // Double security: Patch PawnStyleItemChooser.RandomBeardFor to reroll if it selected a disabled beard
+    // 双重保险：补丁 PawnStyleItemChooser.RandomBeardFor，如果选到了禁用的胡须则进行重滚
+    [HarmonyPatch(typeof(PawnStyleItemChooser), nameof(PawnStyleItemChooser.RandomBeardFor))]
+    public static class Patch_PawnStyleItemChooser_RandomBeardFor
+    {
+        [HarmonyPostfix]
+        public static void Postfix(Pawn pawn, ref BeardDef __result)
+        {
+            if (PawnGenerationState.IsGenerating && __result != null && pawn != null)
+            {
+                if (CustomizerMod.Settings.IsDisabled(__result, pawn.gender))
+                {
+                    // Overwrite the chosen disabled style with a random valid fallback
+                    // 用随机的有效后备胡须覆盖已选中的禁用胡须
+                    BeardDef fallback = GetFallbackBeardFor(pawn);
+                    if (fallback != null)
+                    {
+                        __result = fallback;
+                    }
+                }
+            }
+        }
+
+        private static BeardDef GetFallbackBeardFor(Pawn pawn)
+        {
+            BeardDef systemNoBeard = BeardDefOf.NoBeard ?? DefDatabase<BeardDef>.GetNamedSilentFail("NoBeard");
+            if (pawn == null) return systemNoBeard;
+
+            List<BeardDef> allBeards = DefDatabase<BeardDef>.AllDefsListForReading;
+            if (allBeards.Count == 0) return systemNoBeard;
+
+            // Zero-allocation wrap-around search starting from a random index
+            // 零分配的环绕式检索，从随机的起始索引开始
+            int count = allBeards.Count;
+            int start = Rand.Range(0, count);
+            BeardDef absoluteFallback = null;
+
+            for (int i = 0; i < count; i++)
+            {
+                BeardDef beard = allBeards[(start + i) % count];
+                if (beard == null) continue;
+
+                if (beard.defName == "NoBeard")
+                {
+                    absoluteFallback = beard;
+                }
+
+                // Skip disabled styles
+                // 跳过禁用的样式
+                if (CustomizerMod.Settings.IsDisabled(beard, pawn.gender))
+                {
+                    continue;
+                }
+
+                // Verify with WantsToUseStyle (which will respect other restrictions like gender/mod-patches)
+                // 使用 WantsToUseStyle 进行验证（它将遵循性别/Mod 补丁等其他限制条件）
+                if (PawnStyleItemChooser.WantsToUseStyle(pawn, beard))
+                {
+                    return beard;
+                }
+            }
+
+            return absoluteFallback ?? systemNoBeard ?? allBeards[0];
         }
     }
 
@@ -151,6 +223,7 @@ namespace NPCStyleLimiter
     [HarmonyPatch(typeof(PawnGenerator), "GetBodyTypeFor")]
     public static class Patch_PawnGenerator_GetBodyTypeFor
     {
+        private static readonly object lockObj = new object();
         private static List<BodyTypeDef> cachedAdultBodyTypes;
 
         private static List<BodyTypeDef> AdultBodyTypes
@@ -159,14 +232,20 @@ namespace NPCStyleLimiter
             {
                 if (cachedAdultBodyTypes == null)
                 {
-                    cachedAdultBodyTypes = new List<BodyTypeDef>
+                    lock (lockObj)
                     {
-                        BodyTypeDefOf.Male,
-                        BodyTypeDefOf.Female,
-                        BodyTypeDefOf.Thin,
-                        BodyTypeDefOf.Hulk,
-                        BodyTypeDefOf.Fat
-                    };
+                        if (cachedAdultBodyTypes == null)
+                        {
+                            cachedAdultBodyTypes = new List<BodyTypeDef>
+                            {
+                                BodyTypeDefOf.Male,
+                                BodyTypeDefOf.Female,
+                                BodyTypeDefOf.Thin,
+                                BodyTypeDefOf.Hulk,
+                                BodyTypeDefOf.Fat
+                            };
+                        }
+                    }
                 }
                 return cachedAdultBodyTypes;
             }
@@ -261,23 +340,29 @@ namespace NPCStyleLimiter
         }
     }
 
-    // ThreadLocal tracking class to capture the Pawn currently undergoing apparel generation
-    // 线程局部变量跟踪类，用于捕获当前正在生成服装的 Pawn 实例
+    // ThreadLocal tracking class to capture the Pawn currently undergoing apparel generation (Stack-based for nesting support)
+    // 线程局部变量跟踪类，用于捕获当前正在生成服装的 Pawn 实例（基于栈以支持嵌套调用）
     [HarmonyPatch(typeof(PawnApparelGenerator), nameof(PawnApparelGenerator.GenerateStartingApparelFor))]
     public static class Patch_PawnApparelGenerator_GenerateStartingApparelFor
     {
-        public static readonly System.Threading.ThreadLocal<Pawn> CurrentPawn = new System.Threading.ThreadLocal<Pawn>();
+        private static readonly System.Threading.ThreadLocal<System.Collections.Generic.Stack<Pawn>> pawnStack = 
+            new System.Threading.ThreadLocal<System.Collections.Generic.Stack<Pawn>>(() => new System.Collections.Generic.Stack<Pawn>());
+
+        public static Pawn CurrentPawn => (pawnStack.Value.Count > 0) ? pawnStack.Value.Peek() : null;
 
         [HarmonyPrefix]
         public static void Prefix(Pawn pawn)
         {
-            CurrentPawn.Value = pawn;
+            pawnStack.Value.Push(pawn);
         }
 
-        [HarmonyPostfix]
-        public static void Postfix()
+        [HarmonyFinalizer]
+        public static void Finalizer()
         {
-            CurrentPawn.Value = null;
+            if (pawnStack.Value.Count > 0)
+            {
+                pawnStack.Value.Pop();
+            }
         }
     }
 
@@ -289,8 +374,10 @@ namespace NPCStyleLimiter
         [HarmonyPostfix]
         public static void Postfix(ThingStuffPair __instance, ref float __result)
         {
-            Pawn pawn = Patch_PawnApparelGenerator_GenerateStartingApparelFor.CurrentPawn.Value;
-            if (pawn != null && PawnGenerationState.IsGenerating && __result > 0f)
+            Pawn pawn = Patch_PawnApparelGenerator_GenerateStartingApparelFor.CurrentPawn;
+            // CurrentPawn != null already implies apparel generation is in progress,
+            // which saves an extra ThreadLocal lookup on PawnGenerationState.IsGenerating.
+            if (pawn != null && __result > 0f)
             {
                 if (__instance.thing != null)
                 {
