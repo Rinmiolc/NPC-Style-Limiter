@@ -86,138 +86,6 @@ namespace NPCStyleLimiter
         }
     }
 
-    // Double security: Patch PawnStyleItemChooser.RandomHairFor to reroll if it selected a disabled hairstyle
-    // 双重保险：补丁 PawnStyleItemChooser.RandomHairFor，如果选到了禁用的发型则进行重滚
-    [HarmonyPatch(typeof(PawnStyleItemChooser), nameof(PawnStyleItemChooser.RandomHairFor))]
-    public static class Patch_PawnStyleItemChooser_RandomHairFor
-    {
-        [HarmonyPostfix]
-        public static void Postfix(Pawn pawn, ref HairDef __result)
-        {
-            if (PawnGenerationState.IsGenerating && __result != null && pawn != null)
-            {
-                if (CustomizerMod.Settings.IsDisabled(__result, pawn.gender))
-                {
-                    // Overwrite the chosen disabled style with a random valid fallback
-                    // 用随机的有效后备发型覆盖已选中的禁用发型
-                    HairDef fallback = GetFallbackHairFor(pawn);
-                    if (fallback != null)
-                    {
-                        __result = fallback;
-                    }
-                }
-            }
-        }
-
-        private static HairDef GetFallbackHairFor(Pawn pawn)
-        {
-            HairDef systemBald = HairDefOf.Bald ?? DefDatabase<HairDef>.GetNamedSilentFail("Bald");
-            if (pawn == null) return systemBald;
-
-            List<HairDef> allHairs = DefDatabase<HairDef>.AllDefsListForReading;
-            if (allHairs.Count == 0) return systemBald;
-
-            // Zero-allocation wrap-around search starting from a random index
-            // 零分配的环绕式检索，从随机的起始索引开始
-            int count = allHairs.Count;
-            int start = Rand.Range(0, count);
-            HairDef absoluteFallback = null;
-
-            for (int i = 0; i < count; i++)
-            {
-                HairDef hair = allHairs[(start + i) % count];
-                if (hair == null) continue;
-
-                if (hair.defName == "Bald")
-                {
-                    absoluteFallback = hair;
-                }
-
-                // Skip disabled styles
-                // 跳过禁用的样式
-                if (CustomizerMod.Settings.IsDisabled(hair, pawn.gender))
-                {
-                    continue;
-                }
-
-                // Verify with WantsToUseStyle (which will respect other restrictions like gender/mod-patches)
-                // 使用 WantsToUseStyle 进行验证（它将遵循性别/Mod 补丁等其他限制条件）
-                if (PawnStyleItemChooser.WantsToUseStyle(pawn, hair))
-                {
-                    return hair;
-                }
-            }
-
-            return absoluteFallback ?? systemBald ?? allHairs[0];
-        }
-    }
-
-    // Double security: Patch PawnStyleItemChooser.RandomBeardFor to reroll if it selected a disabled beard
-    // 双重保险：补丁 PawnStyleItemChooser.RandomBeardFor，如果选到了禁用的胡须则进行重滚
-    [HarmonyPatch(typeof(PawnStyleItemChooser), nameof(PawnStyleItemChooser.RandomBeardFor))]
-    public static class Patch_PawnStyleItemChooser_RandomBeardFor
-    {
-        [HarmonyPostfix]
-        public static void Postfix(Pawn pawn, ref BeardDef __result)
-        {
-            if (PawnGenerationState.IsGenerating && __result != null && pawn != null)
-            {
-                if (CustomizerMod.Settings.IsDisabled(__result, pawn.gender))
-                {
-                    // Overwrite the chosen disabled style with a random valid fallback
-                    // 用随机的有效后备胡须覆盖已选中的禁用胡须
-                    BeardDef fallback = GetFallbackBeardFor(pawn);
-                    if (fallback != null)
-                    {
-                        __result = fallback;
-                    }
-                }
-            }
-        }
-
-        private static BeardDef GetFallbackBeardFor(Pawn pawn)
-        {
-            BeardDef systemNoBeard = BeardDefOf.NoBeard ?? DefDatabase<BeardDef>.GetNamedSilentFail("NoBeard");
-            if (pawn == null) return systemNoBeard;
-
-            List<BeardDef> allBeards = DefDatabase<BeardDef>.AllDefsListForReading;
-            if (allBeards.Count == 0) return systemNoBeard;
-
-            // Zero-allocation wrap-around search starting from a random index
-            // 零分配的环绕式检索，从随机的起始索引开始
-            int count = allBeards.Count;
-            int start = Rand.Range(0, count);
-            BeardDef absoluteFallback = null;
-
-            for (int i = 0; i < count; i++)
-            {
-                BeardDef beard = allBeards[(start + i) % count];
-                if (beard == null) continue;
-
-                if (beard.defName == "NoBeard")
-                {
-                    absoluteFallback = beard;
-                }
-
-                // Skip disabled styles
-                // 跳过禁用的样式
-                if (CustomizerMod.Settings.IsDisabled(beard, pawn.gender))
-                {
-                    continue;
-                }
-
-                // Verify with WantsToUseStyle (which will respect other restrictions like gender/mod-patches)
-                // 使用 WantsToUseStyle 进行验证（它将遵循性别/Mod 补丁等其他限制条件）
-                if (PawnStyleItemChooser.WantsToUseStyle(pawn, beard))
-                {
-                    return beard;
-                }
-            }
-
-            return absoluteFallback ?? systemNoBeard ?? allBeards[0];
-        }
-    }
-
     // Patch PawnGenerator.GetBodyTypeFor to filter and adjust ratios of adult body types
     // 补丁 PawnGenerator.GetBodyTypeFor 以过滤并调整成年人体型的比例
     [HarmonyPatch(typeof(PawnGenerator), "GetBodyTypeFor")]
@@ -263,13 +131,10 @@ namespace NPCStyleLimiter
                 // 仅针对标准人类以及处于正常成年体型范围的 Pawn 进行调整，以防破坏异形种族的贴图和骨骼
                 if (pawn.def == ThingDefOf.Human && __result != BodyTypeDefOf.Baby && __result != BodyTypeDefOf.Child)
                 {
-                    if (AdultBodyTypes.Contains(__result))
+                    BodyTypeDef customType = GetWeightedBodyTypeFor(pawn, __result);
+                    if (customType != null)
                     {
-                        BodyTypeDef customType = GetWeightedBodyTypeFor(pawn, __result);
-                        if (customType != null)
-                        {
-                            __result = customType;
-                        }
+                        __result = customType;
                     }
                 }
             }

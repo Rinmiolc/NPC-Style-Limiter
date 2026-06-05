@@ -22,6 +22,32 @@ namespace NPCStyleLimiter
         public readonly Dictionary<Def, float> runtimeWeightsMale = new Dictionary<Def, float>();
         public readonly Dictionary<Def, float> runtimeWeightsFemale = new Dictionary<Def, float>();
 
+        // Fast O(1) lookup arrays indexed by custom index mapped from def type and shortHash
+        private readonly float[] fastWeights = new float[262144];
+        private readonly float[] fastWeightsMale = new float[262144];
+        private readonly float[] fastWeightsFemale = new float[262144];
+
+        public static int GetFastIndex(Def def)
+        {
+            if (def == null) return 0;
+            int typeOffset = 0;
+            if (def is HairDef) typeOffset = 0;
+            else if (def is BeardDef) typeOffset = 65536;
+            else if (def is ThingDef) typeOffset = 131072;
+            else if (def is BodyTypeDef) typeOffset = 196608;
+            return typeOffset + def.shortHash;
+        }
+
+        public CustomizerSettings()
+        {
+            for (int i = 0; i < 262144; i++)
+            {
+                fastWeights[i] = 1f;
+                fastWeightsMale[i] = 1f;
+                fastWeightsFemale[i] = 1f;
+            }
+        }
+
         // Legacy lists for backwards compatibility
         private List<string> disabledHairNames = null;
         private List<string> disabledBeardNames = null;
@@ -135,6 +161,27 @@ namespace NPCStyleLimiter
             ResolveDictionary(weights, runtimeWeights);
             ResolveDictionary(weightsMale, runtimeWeightsMale);
             ResolveDictionary(weightsFemale, runtimeWeightsFemale);
+
+            // Rebuild fast weights cache
+            for (int i = 0; i < 262144; i++)
+            {
+                fastWeights[i] = 1f;
+                fastWeightsMale[i] = 1f;
+                fastWeightsFemale[i] = 1f;
+            }
+
+            foreach (var kvp in runtimeWeights)
+            {
+                if (kvp.Key != null) fastWeights[GetFastIndex(kvp.Key)] = kvp.Value;
+            }
+            foreach (var kvp in runtimeWeightsMale)
+            {
+                if (kvp.Key != null) fastWeightsMale[GetFastIndex(kvp.Key)] = kvp.Value;
+            }
+            foreach (var kvp in runtimeWeightsFemale)
+            {
+                if (kvp.Key != null) fastWeightsFemale[GetFastIndex(kvp.Key)] = kvp.Value;
+            }
         }
 
         private void ResolveDictionary(Dictionary<string, float> source, Dictionary<Def, float> target)
@@ -206,28 +253,34 @@ namespace NPCStyleLimiter
             runtimeWeights.Clear();
             runtimeWeightsMale.Clear();
             runtimeWeightsFemale.Clear();
+            for (int i = 0; i < 262144; i++)
+            {
+                fastWeights[i] = 1f;
+                fastWeightsMale[i] = 1f;
+                fastWeightsFemale[i] = 1f;
+            }
         }
 
         public float GetWeight(Def def, Gender gender)
         {
             if (def == null) return 1.0f;
 
+            int idx = GetFastIndex(def);
             if (useGenderConfig && gender != Gender.None)
             {
                 if (gender == Gender.Female)
                 {
-                    if (runtimeWeightsFemale.TryGetValue(def, out float w)) return w;
+                    return fastWeightsFemale[idx];
                 }
                 else // Male
                 {
-                    if (runtimeWeightsMale.TryGetValue(def, out float w)) return w;
+                    return fastWeightsMale[idx];
                 }
             }
             else
             {
-                if (runtimeWeights.TryGetValue(def, out float w)) return w;
+                return fastWeights[idx];
             }
-            return 1.0f; // Default weight is 1.0
         }
 
         public float GetWeight(string key, Gender gender)
@@ -280,20 +333,24 @@ namespace NPCStyleLimiter
             Def def = FindDef(key);
             if (def != null)
             {
+                int idx = GetFastIndex(def);
                 if (useGenderConfig)
                 {
                     if (gender == Gender.Female)
                     {
                         runtimeWeightsFemale[def] = weight;
+                        fastWeightsFemale[idx] = weight;
                     }
                     else
                     {
                         runtimeWeightsMale[def] = weight;
+                        fastWeightsMale[idx] = weight;
                     }
                 }
                 else
                 {
                     runtimeWeights[def] = weight;
+                    fastWeights[idx] = weight;
                 }
             }
         }
