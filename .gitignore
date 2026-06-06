@@ -6,7 +6,7 @@ Source/bin/
 *.user
 *.suo
 *.sln.docstates
-
+*.bat
 # OS files
 .DS_Store
 Thumbs.db

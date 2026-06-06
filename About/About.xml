@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ModMetaData>
   <name>NPC Style Limiter</name>
-  <author>rinmiolc</author>
-  <packageId>rinmiolc.npcstylelimiter</packageId>
+  <author>Rinmiolc</author>
+  <modVersion>1.0.2</modVersion>
+  <packageId>Rinmiolc.NPCStyleLimiter</packageId>
   <supportedVersions>
-    <li>1.5</li>
     <li>1.6</li>
   </supportedVersions>
   <description>Allows you to customize and limit NPC style generation. You can configure which hairstyles, beards, apparel, and body types can be assigned to NPCs during pawn generation, adjust their generation weights, configure them globally or separately by gender, and customize the overall spawn gender ratio. Includes a modern, fully-featured in-game settings UI with mod filters and search.</description>
