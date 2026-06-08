@@ -20,4 +20,22 @@
   <NPCStyleLimiter_RestoreDefaults>恢复默认设置</NPCStyleLimiter_RestoreDefaults>
   <NPCStyleLimiter_DefaultsRestored>设置已恢复默认。</NPCStyleLimiter_DefaultsRestored>
   <NPCStyleLimiter_NoResultsFound>没有找到匹配的选项。</NPCStyleLimiter_NoResultsFound>
+  <NPCStyleLimiter_ManageProfiles>预设管理</NPCStyleLimiter_ManageProfiles>
+  <NPCStyleLimiter_ProfileManager>预设管理</NPCStyleLimiter_ProfileManager>
+  <NPCStyleLimiter_CurrentProfile>当前预设：{0}</NPCStyleLimiter_CurrentProfile>
+  <NPCStyleLimiter_NoActiveProfile>无活跃预设</NPCStyleLimiter_NoActiveProfile>
+  <NPCStyleLimiter_SaveAs>保存为：</NPCStyleLimiter_SaveAs>
+  <NPCStyleLimiter_Save>保存</NPCStyleLimiter_Save>
+  <NPCStyleLimiter_Load>加载</NPCStyleLimiter_Load>
+  <NPCStyleLimiter_Rename>改名</NPCStyleLimiter_Rename>
+  <NPCStyleLimiter_Delete>删除</NPCStyleLimiter_Delete>
+  <NPCStyleLimiter_Confirm>确定</NPCStyleLimiter_Confirm>
+  <NPCStyleLimiter_Cancel>取消</NPCStyleLimiter_Cancel>
+  <NPCStyleLimiter_ProfileSaved>预设「{0}」已保存。</NPCStyleLimiter_ProfileSaved>
+  <NPCStyleLimiter_ProfileLoaded>预设「{0}」已加载。</NPCStyleLimiter_ProfileLoaded>
+  <NPCStyleLimiter_ProfileDeleted>预设「{0}」已删除。</NPCStyleLimiter_ProfileDeleted>
+  <NPCStyleLimiter_ProfileRenamed>预设已更名为「{0}」。</NPCStyleLimiter_ProfileRenamed>
+  <NPCStyleLimiter_CannotDeleteActive>无法删除当前活跃预设。</NPCStyleLimiter_CannotDeleteActive>
+  <NPCStyleLimiter_ProfileNameEmpty>预设名称不能为空。</NPCStyleLimiter_ProfileNameEmpty>
+  <NPCStyleLimiter_NoProfilesFound>没有已保存的预设。</NPCStyleLimiter_NoProfilesFound>
 </LanguageData>

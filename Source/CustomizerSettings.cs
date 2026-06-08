@@ -2,7 +2,11 @@
 // Licensed under the GNU General Public License v3.0.
 // See LICENSE file in the project root for full license information.
 
+using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Xml.Linq;
 using Verse;
 using RimWorld;
 
@@ -13,6 +17,7 @@ namespace NPCStyleLimiter
         public bool useGenderConfig = false;
         public bool adjustGenderRatio = false;
         public float maleRatio = 0.5f;
+        public string currentProfileName = null;
 
         public Dictionary<string, float> weights = new Dictionary<string, float>();
         public Dictionary<string, float> weightsMale = new Dictionary<string, float>();
@@ -62,6 +67,8 @@ namespace NPCStyleLimiter
             Scribe_Collections.Look(ref weights, "weights", LookMode.Value, LookMode.Value);
             Scribe_Collections.Look(ref weightsMale, "weightsMale", LookMode.Value, LookMode.Value);
             Scribe_Collections.Look(ref weightsFemale, "weightsFemale", LookMode.Value, LookMode.Value);
+
+            Scribe_Values.Look(ref currentProfileName, "currentProfileName", null);
 
             // Load legacy lists if present
             if (Scribe.mode == LoadSaveMode.LoadingVars)
@@ -247,6 +254,7 @@ namespace NPCStyleLimiter
             useGenderConfig = false;
             adjustGenderRatio = false;
             maleRatio = 0.5f;
+            currentProfileName = null;
             if (weights != null) weights.Clear();
             if (weightsMale != null) weightsMale.Clear();
             if (weightsFemale != null) weightsFemale.Clear();
@@ -364,6 +372,210 @@ namespace NPCStyleLimiter
         public bool IsDisabled(string key, Gender gender)
         {
             return GetWeight(key, gender) <= 0f;
+        }
+
+        // ===== Profile management methods =====
+
+        public static string ProfilesFolder
+        {
+            get { return Path.Combine(GenFilePaths.ConfigFolderPath, "NPCStyleLimiter_Profiles"); }
+        }
+
+        public static string GetProfilePath(string name)
+        {
+            return Path.Combine(ProfilesFolder, SanitizeFileName(name) + ".xml");
+        }
+
+        public static string SanitizeFileName(string name)
+        {
+            if (string.IsNullOrEmpty(name)) return "unnamed";
+            char[] invalid = Path.GetInvalidFileNameChars();
+            string safe = new string(name.Where(c => !invalid.Contains(c)).ToArray());
+            return string.IsNullOrEmpty(safe) ? "unnamed" : safe;
+        }
+
+        public List<string> ListProfiles()
+        {
+            string folder = ProfilesFolder;
+            if (!Directory.Exists(folder)) return new List<string>();
+            string[] files = Directory.GetFiles(folder, "*.xml");
+            List<string> names = new List<string>();
+            foreach (string f in files)
+            {
+                names.Add(Path.GetFileNameWithoutExtension(f));
+            }
+            names.Sort(StringComparer.OrdinalIgnoreCase);
+            return names;
+        }
+
+        public bool SaveProfile(string name)
+        {
+            try
+            {
+                string safeName = SanitizeFileName(name);
+                if (string.IsNullOrEmpty(safeName)) return false;
+
+                Directory.CreateDirectory(ProfilesFolder);
+
+                XElement weightsElem = new XElement("weights");
+                if (weights != null)
+                {
+                    foreach (var kv in weights)
+                    {
+                        weightsElem.Add(new XElement("entry", new XAttribute("key", kv.Key), new XAttribute("value", kv.Value)));
+                    }
+                }
+
+                XElement weightsMaleElem = new XElement("weightsMale");
+                if (weightsMale != null)
+                {
+                    foreach (var kv in weightsMale)
+                    {
+                        weightsMaleElem.Add(new XElement("entry", new XAttribute("key", kv.Key), new XAttribute("value", kv.Value)));
+                    }
+                }
+
+                XElement weightsFemaleElem = new XElement("weightsFemale");
+                if (weightsFemale != null)
+                {
+                    foreach (var kv in weightsFemale)
+                    {
+                        weightsFemaleElem.Add(new XElement("entry", new XAttribute("key", kv.Key), new XAttribute("value", kv.Value)));
+                    }
+                }
+
+                XElement root = new XElement("NPCStyleLimiterProfile",
+                    new XElement("profileName", safeName),
+                    new XElement("version", "1"),
+                    new XElement("useGenderConfig", useGenderConfig),
+                    new XElement("adjustGenderRatio", adjustGenderRatio),
+                    new XElement("maleRatio", maleRatio),
+                    weightsElem,
+                    weightsMaleElem,
+                    weightsFemaleElem
+                );
+
+                XDocument doc = new XDocument(new XDeclaration("1.0", "utf-8", null), root);
+                doc.Save(GetProfilePath(safeName));
+
+                currentProfileName = safeName;
+                Write();
+                return true;
+            }
+            catch (Exception e)
+            {
+                Log.Error("NPCStyleLimiter: Failed to save profile '" + name + "': " + e.Message);
+                return false;
+            }
+        }
+
+        public bool LoadProfile(string name)
+        {
+            try
+            {
+                string path = GetProfilePath(name);
+                if (!File.Exists(path)) return false;
+
+                XDocument doc = XDocument.Load(path);
+                XElement root = doc.Root;
+                if (root == null) return false;
+
+                // Read scalar settings
+                XElement elem = root.Element("useGenderConfig");
+                if (elem != null) useGenderConfig = (bool)elem;
+
+                elem = root.Element("adjustGenderRatio");
+                if (elem != null) adjustGenderRatio = (bool)elem;
+
+                elem = root.Element("maleRatio");
+                if (elem != null) maleRatio = (float)elem;
+
+                // Read weight dictionaries
+                weights = ReadWeightDict(root.Element("weights"));
+                weightsMale = ReadWeightDict(root.Element("weightsMale"));
+                weightsFemale = ReadWeightDict(root.Element("weightsFemale"));
+
+                // Rebuild runtime cache and persist
+                InitializeSets();
+                ResolveRuntimeWeights();
+                Write();
+
+                currentProfileName = name;
+                return true;
+            }
+            catch (Exception e)
+            {
+                Log.Error("NPCStyleLimiter: Failed to load profile '" + name + "': " + e.Message);
+                return false;
+            }
+        }
+
+        private Dictionary<string, float> ReadWeightDict(XElement container)
+        {
+            Dictionary<string, float> dict = new Dictionary<string, float>();
+            if (container == null) return dict;
+            foreach (XElement entry in container.Elements("entry"))
+            {
+                string key = (string)entry.Attribute("key");
+                float value = (float)entry.Attribute("value");
+                if (key != null) dict[key] = value;
+            }
+            return dict;
+        }
+
+        public bool DeleteProfile(string name)
+        {
+            if (name == currentProfileName) return false;
+            try
+            {
+                string path = GetProfilePath(name);
+                if (!File.Exists(path)) return false;
+                File.Delete(path);
+                return true;
+            }
+            catch (Exception e)
+            {
+                Log.Error("NPCStyleLimiter: Failed to delete profile '" + name + "': " + e.Message);
+                return false;
+            }
+        }
+
+        public bool RenameProfile(string oldName, string newName)
+        {
+            string safeNewName = SanitizeFileName(newName);
+            if (string.IsNullOrEmpty(safeNewName)) return false;
+            try
+            {
+                string oldPath = GetProfilePath(oldName);
+                string newPath = GetProfilePath(safeNewName);
+                if (!File.Exists(oldPath)) return false;
+
+                // If target already exists, delete it first (overwrite behavior)
+                if (File.Exists(newPath) && !string.Equals(oldPath, newPath, StringComparison.OrdinalIgnoreCase))
+                {
+                    File.Delete(newPath);
+                }
+
+                File.Move(oldPath, newPath);
+
+                // Update profileName inside the XML
+                XDocument doc = XDocument.Load(newPath);
+                XElement nameElem = doc.Root != null ? doc.Root.Element("profileName") : null;
+                if (nameElem != null) nameElem.Value = safeNewName;
+                doc.Save(newPath);
+
+                if (currentProfileName == oldName)
+                {
+                    currentProfileName = safeNewName;
+                    Write();
+                }
+                return true;
+            }
+            catch (Exception e)
+            {
+                Log.Error("NPCStyleLimiter: Failed to rename profile '" + oldName + "' to '" + newName + "': " + e.Message);
+                return false;
+            }
         }
     }
 }

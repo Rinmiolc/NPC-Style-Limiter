@@ -20,4 +20,22 @@
   <NPCStyleLimiter_RestoreDefaults>Restore Defaults</NPCStyleLimiter_RestoreDefaults>
   <NPCStyleLimiter_DefaultsRestored>Settings restored to defaults.</NPCStyleLimiter_DefaultsRestored>
   <NPCStyleLimiter_NoResultsFound>No matching items found.</NPCStyleLimiter_NoResultsFound>
+  <NPCStyleLimiter_ManageProfiles>Profiles</NPCStyleLimiter_ManageProfiles>
+  <NPCStyleLimiter_ProfileManager>Profile Manager</NPCStyleLimiter_ProfileManager>
+  <NPCStyleLimiter_CurrentProfile>Current: {0}</NPCStyleLimiter_CurrentProfile>
+  <NPCStyleLimiter_NoActiveProfile>No active profile</NPCStyleLimiter_NoActiveProfile>
+  <NPCStyleLimiter_SaveAs>Save As:</NPCStyleLimiter_SaveAs>
+  <NPCStyleLimiter_Save>Save</NPCStyleLimiter_Save>
+  <NPCStyleLimiter_Load>Load</NPCStyleLimiter_Load>
+  <NPCStyleLimiter_Rename>Rename</NPCStyleLimiter_Rename>
+  <NPCStyleLimiter_Delete>Delete</NPCStyleLimiter_Delete>
+  <NPCStyleLimiter_Confirm>OK</NPCStyleLimiter_Confirm>
+  <NPCStyleLimiter_Cancel>Cancel</NPCStyleLimiter_Cancel>
+  <NPCStyleLimiter_ProfileSaved>Profile "{0}" saved.</NPCStyleLimiter_ProfileSaved>
+  <NPCStyleLimiter_ProfileLoaded>Profile "{0}" loaded.</NPCStyleLimiter_ProfileLoaded>
+  <NPCStyleLimiter_ProfileDeleted>Profile "{0}" deleted.</NPCStyleLimiter_ProfileDeleted>
+  <NPCStyleLimiter_ProfileRenamed>Profile renamed to "{0}".</NPCStyleLimiter_ProfileRenamed>
+  <NPCStyleLimiter_CannotDeleteActive>Cannot delete the active profile.</NPCStyleLimiter_CannotDeleteActive>
+  <NPCStyleLimiter_ProfileNameEmpty>Profile name cannot be empty.</NPCStyleLimiter_ProfileNameEmpty>
+  <NPCStyleLimiter_NoProfilesFound>No saved profiles.</NPCStyleLimiter_NoProfilesFound>
 </LanguageData>

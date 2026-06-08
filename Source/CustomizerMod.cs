@@ -200,6 +200,18 @@ namespace NPCStyleLimiter
             Rect topConfigRect = new Rect(inRect.x, inRect.y, inRect.width, 36f);
             Widgets.DrawRectFast(topConfigRect, PanelBgColor);
 
+            // Current profile indicator (right side of header)
+            if (!string.IsNullOrEmpty(Settings.currentProfileName))
+            {
+                GUI.color = AccentColor;
+                TextAnchor prevAnchor = Text.Anchor;
+                Text.Anchor = TextAnchor.MiddleRight;
+                Widgets.Label(new Rect(topConfigRect.x, topConfigRect.y + 6f, topConfigRect.width - 10f, 24f),
+                    "NPCStyleLimiter_CurrentProfile".Translate(Settings.currentProfileName));
+                Text.Anchor = prevAnchor;
+                GUI.color = Color.white;
+            }
+
             // Gender Config Toggle
             Rect genderConfigCheckRect = new Rect(topConfigRect.x + 10f, topConfigRect.y + 6f, topConfigRect.width * 0.28f, 24f);
             bool useGender = Settings.useGenderConfig;
@@ -376,18 +388,25 @@ namespace NPCStyleLimiter
                 DrawList(cachedFilteredDefs, filterRowY, inRect, activeGender);
             }
 
-            // Bottom Buttons: Save Changes & Restore Defaults
-            float buttonGap = 10f;
-            float restoreWidth = 160f;
-            float saveWidth = inRect.width - restoreWidth - buttonGap;
+            // Bottom Buttons: Save Changes, Manage Profiles, Restore Defaults
+            float buttonGap = 4f;
+            float manageWidth = 120f;
+            float restoreWidth = 150f;
+            float saveWidth = inRect.width - manageWidth - restoreWidth - buttonGap * 2;
 
             Rect saveRect = new Rect(inRect.x, inRect.yMax - 35f, saveWidth, 35f);
-            Rect restoreRect = new Rect(inRect.x + saveWidth + buttonGap, inRect.yMax - 35f, restoreWidth, 35f);
+            Rect manageRect = new Rect(inRect.x + saveWidth + buttonGap, inRect.yMax - 35f, manageWidth, 35f);
+            Rect restoreRect = new Rect(inRect.x + saveWidth + manageWidth + buttonGap * 2, inRect.yMax - 35f, restoreWidth, 35f);
 
             if (Widgets.ButtonText(saveRect, "NPCStyleLimiter_SaveChanges".Translate()))
             {
                 Settings.Write();
                 Messages.Message("NPCStyleLimiter_SettingsSaved".Translate(), MessageTypeDefOf.TaskCompletion, false);
+            }
+
+            if (Widgets.ButtonText(manageRect, "NPCStyleLimiter_ManageProfiles".Translate()))
+            {
+                Find.WindowStack.Add(new Dialog_ManageConfigs());
             }
 
             if (Widgets.ButtonText(restoreRect, "NPCStyleLimiter_RestoreDefaults".Translate()))
