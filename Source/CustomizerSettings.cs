@@ -17,6 +17,7 @@ namespace NPCStyleLimiter
         public bool useGenderConfig = false;
         public bool adjustGenderRatio = false;
         public float maleRatio = 0.5f;
+        public bool debugMode = false;
         public string currentProfileName = "Default";
 
         public Dictionary<string, float> weights = new Dictionary<string, float>();
@@ -69,6 +70,7 @@ namespace NPCStyleLimiter
             Scribe_Values.Look(ref useGenderConfig, "useGenderConfig", false);
             Scribe_Values.Look(ref adjustGenderRatio, "adjustGenderRatio", false);
             Scribe_Values.Look(ref maleRatio, "maleRatio", 0.5f);
+            Scribe_Values.Look(ref debugMode, "debugMode", false);
 
             Scribe_Collections.Look(ref weights, "weights", LookMode.Value, LookMode.Value);
             Scribe_Collections.Look(ref weightsMale, "weightsMale", LookMode.Value, LookMode.Value);
@@ -281,6 +283,7 @@ namespace NPCStyleLimiter
                     new XElement("useGenderConfig", useGenderConfig),
                     new XElement("adjustGenderRatio", adjustGenderRatio),
                     new XElement("maleRatio", maleRatio),
+                    new XElement("debugMode", debugMode),
                     new XElement("weights", weights.Select(kv => new XElement("entry", new XAttribute("key", kv.Key), new XAttribute("value", kv.Value)))),
                     new XElement("weightsMale", weightsMale.Select(kv => new XElement("entry", new XAttribute("key", kv.Key), new XAttribute("value", kv.Value)))),
                     new XElement("weightsFemale", weightsFemale.Select(kv => new XElement("entry", new XAttribute("key", kv.Key), new XAttribute("value", kv.Value))))
@@ -304,6 +307,7 @@ namespace NPCStyleLimiter
                 useGenderConfig = (bool?)root.Element("useGenderConfig") ?? false;
                 adjustGenderRatio = (bool?)root.Element("adjustGenderRatio") ?? false;
                 maleRatio = (float?)root.Element("maleRatio") ?? 0.5f;
+                debugMode = (bool?)root.Element("debugMode") ?? false;
                 weights = ReadWeightDict(root.Element("weights"));
                 weightsMale = ReadWeightDict(root.Element("weightsMale"));
                 weightsFemale = ReadWeightDict(root.Element("weightsFemale"));

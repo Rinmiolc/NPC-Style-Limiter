@@ -7,14 +7,14 @@
   <NPCStyleLimiter_FilterMod>過濾 Mod：{0}</NPCStyleLimiter_FilterMod>
   <NPCStyleLimiter_AllMods>全部 Mod</NPCStyleLimiter_AllMods>
   <NPCStyleLimiter_AllowAll>允許全部</NPCStyleLimiter_AllowAll>
-  <NPCStyleLimiter_DisallowAll>禁用全部</NPCStyleLimiter_DisallowAll>
+  <NPCStyleLimiter_BlockAll>全部禁用</NPCStyleLimiter_BlockAll>
   <NPCStyleLimiter_SaveProfile>儲存預設</NPCStyleLimiter_SaveProfile>
   <NPCStyleLimiter_LoadManageProfiles>載入/管理</NPCStyleLimiter_LoadManageProfiles>
   <NPCStyleLimiter_SettingsSaved>NPC 樣式限制器設定已儲存。</NPCStyleLimiter_SettingsSaved>
   <NPCStyleLimiter_UseGenderConfig>分性別設定</NPCStyleLimiter_UseGenderConfig>
   <NPCStyleLimiter_Male>男性</NPCStyleLimiter_Male>
   <NPCStyleLimiter_Female>女性</NPCStyleLimiter_Female>
-  <NPCStyleLimiter_AdjustGenderRatio>自訂男女比例</NPCStyleLimiter_AdjustGenderRatio>
+  <NPCStyleLimiter_AdjustGenderRatio>自定义男女比例</NPCStyleLimiter_AdjustGenderRatio>
   <NPCStyleLimiter_MaleRatioLabel>男:{0} / 女:{1}</NPCStyleLimiter_MaleRatioLabel>
   <NPCStyleLimiter_Apparel>服裝列表</NPCStyleLimiter_Apparel>
   <NPCStyleLimiter_BodyTypes>體型列表</NPCStyleLimiter_BodyTypes>
@@ -23,13 +23,17 @@
   <NPCStyleLimiter_NoResultsFound>沒有找到符合的選項。</NPCStyleLimiter_NoResultsFound>
   <NPCStyleLimiter_ManageProfiles>預設管理</NPCStyleLimiter_ManageProfiles>
   <NPCStyleLimiter_ProfileManager>預設管理</NPCStyleLimiter_ProfileManager>
+  <NPCStyleLimiter_ProfileLabel>目前預設</NPCStyleLimiter_ProfileLabel>
+  <NPCStyleLimiter_CurrentProfileLabel>目前激活預设</NPCStyleLimiter_CurrentProfileLabel>
   <NPCStyleLimiter_CurrentProfile>目前的預設：{0}</NPCStyleLimiter_CurrentProfile>
+  <NPCStyleLimiter_StoredProfiles>已存預設列表</NPCStyleLimiter_StoredProfiles>
   <NPCStyleLimiter_NoActiveProfile>無活躍預設</NPCStyleLimiter_NoActiveProfile>
   <NPCStyleLimiter_SaveAs>儲存為：</NPCStyleLimiter_SaveAs>
   <NPCStyleLimiter_Save>儲存</NPCStyleLimiter_Save>
   <NPCStyleLimiter_Load>載入</NPCStyleLimiter_Load>
   <NPCStyleLimiter_Rename>重新命名</NPCStyleLimiter_Rename>
   <NPCStyleLimiter_Delete>刪除</NPCStyleLimiter_Delete>
+  <NPCStyleLimiter_OK>確定</NPCStyleLimiter_OK>
   <NPCStyleLimiter_Confirm>確定</NPCStyleLimiter_Confirm>
   <NPCStyleLimiter_Cancel>取消</NPCStyleLimiter_Cancel>
   <NPCStyleLimiter_ProfileSaved>預設「{0}」已儲存。</NPCStyleLimiter_ProfileSaved>

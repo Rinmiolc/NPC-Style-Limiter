@@ -24,10 +24,7 @@ namespace NPCStyleLimiter
             Settings.InitializeSets();
         }
 
-        public override string SettingsCategory()
-        {
-            return "NPCStyleLimiter_Category".Translate();
-        }
+        public override string SettingsCategory() => "NPCStyleLimiter_Category".Translate();
 
         private Vector2 scrollPosition = Vector2.zero;
         private string hairSearchQuery = "";
@@ -35,13 +32,9 @@ namespace NPCStyleLimiter
         private string apparelSearchQuery = "";
         private int activeTab = 0; // 0: Hair, 1: Beard, 2: Apparel, 3: Body Types
         
-        // Mod filtering
-        private string selectedModName = "All"; // "All" or mod name
-
-        // State for gender config editing
+        private string selectedModName = "All";
         private Gender editingGender = Gender.Male;
 
-        // UI caching state
         private readonly List<Def> cachedFilteredDefs = new List<Def>();
         private int lastActiveTab = -1;
         private string lastModFilter = null;
@@ -50,387 +43,296 @@ namespace NPCStyleLimiter
         private string lastApparelSearch = null;
         private bool cacheInitialized = false;
 
-        // Pre-cached full database lists for performance
         private List<HairDef> allHairs = null;
         private List<BeardDef> allBeards = null;
         private List<ThingDef> allApparels = null;
         private List<BodyTypeDef> allBodyTypes = null;
 
-        // Custom Modern UI Theme Colors
-        private static readonly Color AccentColor = new Color(0.78f, 0.55f, 0.15f); // Warm yellow-orange matching RimWorld UI
-        private static readonly Color InactiveTextColor = new Color(0.55f, 0.6f, 0.62f); // Sleek slate grey
-        private static readonly Color SliderTrackColor = new Color(0.12f, 0.12f, 0.12f); // Deep dark track
-        private static readonly Color PanelBgColor = new Color(1f, 1f, 1f, 0.02f); // High-contrast translucent overlay
-        private static readonly Color HoverRowColor = new Color(1f, 1f, 1f, 0.04f); // Highlight color on hover
+        // Modern Theme
+        private static readonly Color AccentColor = new Color(0.78f, 0.55f, 0.15f);
+        private static readonly Color InactiveTextColor = new Color(0.55f, 0.6f, 0.62f);
+        private static readonly Color SliderTrackColor = new Color(0.12f, 0.12f, 0.12f);
+        private static readonly Color PanelBgColor = new Color(1f, 1f, 1f, 0.03f);
+        private static readonly Color HoverRowColor = new Color(1f, 1f, 1f, 0.05f);
+        private static readonly Color CardBgColor = new Color(0f, 0f, 0f, 0.15f);
 
         private void RebuildFilterCache()
         {
             cachedFilteredDefs.Clear();
-            string newSearch = "";
-            if (activeTab == 0) newSearch = hairSearchQuery;
-            else if (activeTab == 1) newSearch = beardSearchQuery;
-            else if (activeTab == 2) newSearch = apparelSearchQuery;
+            string search = (activeTab == 0) ? hairSearchQuery : (activeTab == 1 ? beardSearchQuery : apparelSearchQuery);
 
             if (activeTab == 0)
             {
-                if (allHairs == null)
-                {
-                    allHairs = new List<HairDef>();
-                    foreach (var def in DefDatabase<HairDef>.AllDefsListForReading)
-                    {
-                        if (def == null) continue;
-                        if (def.defName != "Bald") allHairs.Add(def);
-                    }
-                    allHairs.Sort((a, b) => string.Compare(a?.label ?? "", b?.label ?? "", StringComparison.OrdinalIgnoreCase));
-                }
-                foreach (var def in allHairs)
-                {
-                    if (def == null) continue;
-                    string modName = def.modContentPack?.Name ?? "Core";
-                    if (selectedModName != "All" && modName != selectedModName) continue;
-                    if (!newSearch.NullOrEmpty())
-                    {
-                        bool labelMatch = def.label != null && def.label.IndexOf(newSearch, StringComparison.OrdinalIgnoreCase) >= 0;
-                        bool defNameMatch = def.defName != null && def.defName.IndexOf(newSearch, StringComparison.OrdinalIgnoreCase) >= 0;
-                        if (!labelMatch && !defNameMatch) continue;
-                    }
-                    cachedFilteredDefs.Add(def);
-                }
+                if (allHairs == null) allHairs = DefDatabase<HairDef>.AllDefsListForReading.Where(d => d != null && d.defName != "Bald").OrderBy(d => d.label).ToList();
+                ApplyFilters(allHairs, search);
             }
             else if (activeTab == 1)
             {
-                if (allBeards == null)
-                {
-                    allBeards = new List<BeardDef>();
-                    foreach (var def in DefDatabase<BeardDef>.AllDefsListForReading)
-                    {
-                        if (def == null) continue;
-                        if (def.defName != "NoBeard") allBeards.Add(def);
-                    }
-                    allBeards.Sort((a, b) => string.Compare(a?.label ?? "", b?.label ?? "", StringComparison.OrdinalIgnoreCase));
-                }
-                foreach (var def in allBeards)
-                {
-                    if (def == null) continue;
-                    string modName = def.modContentPack?.Name ?? "Core";
-                    if (selectedModName != "All" && modName != selectedModName) continue;
-                    if (!newSearch.NullOrEmpty())
-                    {
-                        bool labelMatch = def.label != null && def.label.IndexOf(newSearch, StringComparison.OrdinalIgnoreCase) >= 0;
-                        bool defNameMatch = def.defName != null && def.defName.IndexOf(newSearch, StringComparison.OrdinalIgnoreCase) >= 0;
-                        if (!labelMatch && !defNameMatch) continue;
-                    }
-                    cachedFilteredDefs.Add(def);
-                }
+                if (allBeards == null) allBeards = DefDatabase<BeardDef>.AllDefsListForReading.Where(d => d != null && d.defName != "NoBeard").OrderBy(d => d.label).ToList();
+                ApplyFilters(allBeards, search);
             }
             else if (activeTab == 2)
             {
-                if (allApparels == null)
-                {
-                    allApparels = new List<ThingDef>();
-                    foreach (var def in DefDatabase<ThingDef>.AllDefsListForReading)
-                    {
-                        if (def == null) continue;
-                        if (def.IsApparel) allApparels.Add(def);
-                    }
-                    allApparels.Sort((a, b) => string.Compare(a?.label ?? "", b?.label ?? "", StringComparison.OrdinalIgnoreCase));
-                }
-                foreach (var def in allApparels)
-                {
-                    if (def == null) continue;
-                    string modName = def.modContentPack?.Name ?? "Core";
-                    if (selectedModName != "All" && modName != selectedModName) continue;
-                    if (!newSearch.NullOrEmpty())
-                    {
-                        bool labelMatch = def.label != null && def.label.IndexOf(newSearch, StringComparison.OrdinalIgnoreCase) >= 0;
-                        bool defNameMatch = def.defName != null && def.defName.IndexOf(newSearch, StringComparison.OrdinalIgnoreCase) >= 0;
-                        if (!labelMatch && !defNameMatch) continue;
-                    }
-                    cachedFilteredDefs.Add(def);
-                }
+                if (allApparels == null) allApparels = DefDatabase<ThingDef>.AllDefsListForReading.Where(d => d != null && d.IsApparel).OrderBy(d => d.label).ToList();
+                ApplyFilters(allApparels, search);
             }
             else if (activeTab == 3)
             {
-                if (allBodyTypes == null)
+                if (allBodyTypes == null) allBodyTypes = DefDatabase<BodyTypeDef>.AllDefsListForReading.Where(d => d != null && d.defName != "Baby" && d.defName != "Child").OrderBy(d => d.label ?? d.defName).ToList();
+                cachedFilteredDefs.AddRange(allBodyTypes);
+            }
+        }
+
+        private void ApplyFilters<T>(List<T> source, string search) where T : Def
+        {
+            foreach (var def in source)
+            {
+                if (selectedModName != "All" && (def.modContentPack?.Name ?? "Core") != selectedModName) continue;
+                if (!search.NullOrEmpty())
                 {
-                    allBodyTypes = new List<BodyTypeDef>();
-                    foreach (var def in DefDatabase<BodyTypeDef>.AllDefsListForReading)
-                    {
-                        if (def == null) continue;
-                        if (def.defName != "Baby" && def.defName != "Child") allBodyTypes.Add(def);
-                    }
-                    allBodyTypes.Sort((a, b) => string.Compare(a?.label ?? "", b?.label ?? "", StringComparison.OrdinalIgnoreCase));
+                    if ((def.label?.IndexOf(search, StringComparison.OrdinalIgnoreCase) ?? -1) < 0 && 
+                        (def.defName?.IndexOf(search, StringComparison.OrdinalIgnoreCase) ?? -1) < 0) continue;
                 }
-                foreach (var def in allBodyTypes)
-                {
-                    if (def == null) continue;
-                    cachedFilteredDefs.Add(def);
-                }
+                cachedFilteredDefs.Add(def);
             }
         }
 
         public override void DoSettingsWindowContents(Rect inRect)
         {
             Settings.InitializeSets();
-
-            // Current editing target gender
             Gender activeGender = Settings.useGenderConfig ? editingGender : Gender.None;
 
-            // Cache check and rebuild if criteria changed
-            bool stateChanged = !cacheInitialized || 
-                                activeTab != lastActiveTab || 
-                                selectedModName != lastModFilter || 
-                                hairSearchQuery != lastHairSearch || 
-                                beardSearchQuery != lastBeardSearch || 
-                                apparelSearchQuery != lastApparelSearch;
-
-            if (stateChanged)
+            if (!cacheInitialized || activeTab != lastActiveTab || selectedModName != lastModFilter || 
+                hairSearchQuery != lastHairSearch || beardSearchQuery != lastBeardSearch || apparelSearchQuery != lastApparelSearch)
             {
                 RebuildFilterCache();
-                lastActiveTab = activeTab;
-                lastModFilter = selectedModName;
-                lastHairSearch = hairSearchQuery;
-                lastBeardSearch = beardSearchQuery;
-                lastApparelSearch = apparelSearchQuery;
+                lastActiveTab = activeTab; lastModFilter = selectedModName;
+                lastHairSearch = hairSearchQuery; lastBeardSearch = beardSearchQuery; lastApparelSearch = apparelSearchQuery;
                 cacheInitialized = true;
             }
-            Settings.InitializeSets();
 
-            // 1. Top Panel: Gender Config and Custom Ratio (Unified Header Card)
-            float headerHeight = Settings.adjustGenderRatio ? 65f : 40f;
-            Rect topConfigRect = new Rect(inRect.x, inRect.y, inRect.width, headerHeight);
-            Widgets.DrawRectFast(topConfigRect, PanelBgColor);
+            // --- HEADER: DASHBOARD CARD ---
+            float headerHeight = Settings.adjustGenderRatio ? 72f : 44f;
+            Rect headerCard = new Rect(inRect.x, inRect.y, inRect.width, headerHeight);
+            Widgets.DrawRectFast(headerCard, CardBgColor);
 
-            // Row 1: Gender Config Toggle & Gender Selector
-            Rect genderConfigCheckRect = new Rect(topConfigRect.x + 10f, topConfigRect.y + 8f, 180f, 24f);
+            // Row 1: Primary Controls
+            float curX = headerCard.x + 12f;
+            float curY = headerCard.y + 10f;
+
+            // Profile Badge
+            Rect profileBadge = new Rect(headerCard.xMax - 180f, curY, 170f, 24f);
+            Text.Anchor = TextAnchor.MiddleRight;
+            GUI.color = InactiveTextColor;
+            Widgets.Label(profileBadge, "NPCStyleLimiter_ProfileLabel".Translate() + ": ");
+            GUI.color = AccentColor;
+            Widgets.Label(profileBadge, Settings.currentProfileName ?? "Default");
+            GUI.color = Color.white;
+            Text.Anchor = TextAnchor.UpperLeft;
+
+            // Gender Config Toggle
+            Rect checkRect = new Rect(curX, curY, 160f, 24f);
             bool useGender = Settings.useGenderConfig;
-            Widgets.CheckboxLabeled(genderConfigCheckRect, "NPCStyleLimiter_UseGenderConfig".Translate(), ref useGender);
+            Widgets.CheckboxLabeled(checkRect, "NPCStyleLimiter_UseGenderConfig".Translate(), ref useGender);
             if (useGender != Settings.useGenderConfig) Settings.useGenderConfig = useGender;
+            curX += 170f;
 
             if (Settings.useGenderConfig)
             {
-                Rect maleTabRect = new Rect(genderConfigCheckRect.xMax + 10f, topConfigRect.y + 8f, 75f, 24f);
-                Rect femaleTabRect = new Rect(maleTabRect.xMax + 5f, topConfigRect.y + 8f, 75f, 24f);
-                if (Widgets.ButtonText(maleTabRect, "NPCStyleLimiter_Male".Translate(), editingGender == Gender.Male, true, true)) editingGender = Gender.Male;
-                if (Widgets.ButtonText(femaleTabRect, "NPCStyleLimiter_Female".Translate(), editingGender == Gender.Female, true, true)) editingGender = Gender.Female;
+                Rect maleBtn = new Rect(curX, curY, 60f, 24f);
+                Rect femaleBtn = new Rect(maleBtn.xMax + 4f, curY, 60f, 24f);
+                if (Widgets.ButtonText(maleBtn, "NPCStyleLimiter_Male".Translate(), editingGender == Gender.Male, true, true)) editingGender = Gender.Male;
+                if (Widgets.ButtonText(femaleBtn, "NPCStyleLimiter_Female".Translate(), editingGender == Gender.Female, true, true)) editingGender = Gender.Female;
+                curX = femaleBtn.xMax + 15f;
             }
 
-            // Row 1 Right: Current Profile (Now clearly aligned)
-            if (!string.IsNullOrEmpty(Settings.currentProfileName))
-            {
-                GUI.color = AccentColor;
-                TextAnchor prevAnchor = Text.Anchor;
-                Text.Anchor = TextAnchor.MiddleRight;
-                Widgets.Label(new Rect(topConfigRect.x, topConfigRect.y + 8f, topConfigRect.width - 10f, 24f), 
-                    "NPCStyleLimiter_CurrentProfile".Translate(Settings.currentProfileName));
-                Text.Anchor = prevAnchor;
-                GUI.color = Color.white;
-            }
+            // Gender Ratio Toggle
+            Rect ratioToggleRect = new Rect(curX, curY, 150f, 24f);
+            bool adjRatio = Settings.adjustGenderRatio;
+            Widgets.CheckboxLabeled(ratioToggleRect, "NPCStyleLimiter_AdjustGenderRatio".Translate(), ref adjRatio);
+            if (adjRatio != Settings.adjustGenderRatio) Settings.adjustGenderRatio = adjRatio;
+            curX += 160f;
 
-            // Row 2 (Optional): Gender Ratio
+            // Debug Mode Toggle
+            Rect debugRect = new Rect(curX, curY, 100f, 24f);
+            Widgets.CheckboxLabeled(debugRect, "DEBUG", ref Settings.debugMode);
+
+            // Row 2: Ratio Slider
             if (Settings.adjustGenderRatio)
             {
-                Rect genderRatioCheckRect = new Rect(topConfigRect.x + 10f, topConfigRect.y + 36f, 180f, 24f);
-                bool adjRatio = Settings.adjustGenderRatio;
-                Widgets.CheckboxLabeled(genderRatioCheckRect, "NPCStyleLimiter_AdjustGenderRatio".Translate(), ref adjRatio);
-                if (adjRatio != Settings.adjustGenderRatio) Settings.adjustGenderRatio = adjRatio;
-
-                Rect ratioSliderRect = new Rect(genderRatioCheckRect.xMax + 10f, topConfigRect.y + 36f, topConfigRect.width - genderRatioCheckRect.width - 30f, 24f);
-                float newRatio = Widgets.HorizontalSlider(ratioSliderRect, Settings.maleRatio, 0f, 1f, false, 
-                    "NPCStyleLimiter_MaleRatioLabel".Translate(Settings.maleRatio.ToString("P0"), (1f - Settings.maleRatio).ToString("P0")), 
-                    null, null, 0.05f);
+                curY += 28f;
+                Text.Anchor = TextAnchor.MiddleLeft;
+                
+                Rect sliderRect = new Rect(headerCard.x + 12f, curY, 200f, 24f);
+                float newRatio = DrawCustomSlider(sliderRect, Settings.maleRatio, 0f, 1f, 0.01f);
                 if (newRatio != Settings.maleRatio) Settings.maleRatio = newRatio;
-            }
-            else
-            {
-                Rect genderRatioCheckRect = new Rect(topConfigRect.x + 10f, topConfigRect.y + 36f, 180f, 24f);
-                bool adjRatio = Settings.adjustGenderRatio;
-                Widgets.CheckboxLabeled(genderRatioCheckRect, "NPCStyleLimiter_AdjustGenderRatio".Translate(), ref adjRatio);
-                if (adjRatio != Settings.adjustGenderRatio) Settings.adjustGenderRatio = adjRatio;
+                
+                Rect valLabel = new Rect(sliderRect.xMax + 15f, curY, 150f, 24f);
+                Widgets.Label(valLabel, "NPCStyleLimiter_MaleRatioLabel".Translate(Settings.maleRatio.ToString("P0"), (1f - Settings.maleRatio).ToString("P0")));
+                Text.Anchor = TextAnchor.UpperLeft;
             }
 
-            // 2. Tabs UI (Adjusted Y position)
-            Rect tabRect = new Rect(inRect.x, topConfigRect.yMax + 10f, inRect.width, 35f);
-            float tabWidth = tabRect.width / 4f;
+            // --- TABS ---
+            curY = headerCard.yMax + 12f;
+            Rect tabsRect = new Rect(inRect.x, curY, inRect.width, 38f);
+            float tW = tabsRect.width / 4f;
+            if (DrawModernTab(new Rect(tabsRect.x, curY, tW, 38f), "NPCStyleLimiter_HairStyles".Translate(), activeTab == 0)) activeTab = 0;
+            if (DrawModernTab(new Rect(tabsRect.x + tW, curY, tW, 38f), "NPCStyleLimiter_BeardStyles".Translate(), activeTab == 1)) activeTab = 1;
+            if (DrawModernTab(new Rect(tabsRect.x + tW * 2, curY, tW, 38f), "NPCStyleLimiter_Apparel".Translate(), activeTab == 2)) activeTab = 2;
+            if (DrawModernTab(new Rect(tabsRect.x + tW * 3, curY, tW, 38f), "NPCStyleLimiter_BodyTypes".Translate(), activeTab == 3)) activeTab = 3;
 
-            if (DrawCustomTab(new Rect(tabRect.x, tabRect.y, tabWidth, tabRect.height), "NPCStyleLimiter_HairStyles".Translate(), activeTab == 0))
+            // --- FILTER BAR ---
+            curY = tabsRect.yMax + 10f;
+            if (activeTab != 3)
             {
-                activeTab = 0;
-                scrollPosition = Vector2.zero;
-                selectedModName = "All";
-            }
-            if (DrawCustomTab(new Rect(tabRect.x + tabWidth, tabRect.y, tabWidth, tabRect.height), "NPCStyleLimiter_BeardStyles".Translate(), activeTab == 1))
-            {
-                activeTab = 1;
-                scrollPosition = Vector2.zero;
-                selectedModName = "All";
-            }
-            if (DrawCustomTab(new Rect(tabRect.x + tabWidth * 2f, tabRect.y, tabWidth, tabRect.height), "NPCStyleLimiter_Apparel".Translate(), activeTab == 2))
-            {
-                activeTab = 2;
-                scrollPosition = Vector2.zero;
-                selectedModName = "All";
-            }
-            if (DrawCustomTab(new Rect(tabRect.x + tabWidth * 3f, tabRect.y, tabWidth, tabRect.height), "NPCStyleLimiter_BodyTypes".Translate(), activeTab == 3))
-            {
-                activeTab = 3;
-                scrollPosition = Vector2.zero;
-                selectedModName = "All";
-            }
+                Rect filterBar = new Rect(inRect.x, curY, inRect.width, 40f);
+                Widgets.DrawRectFast(filterBar, PanelBgColor);
+                
+                Rect searchRect = new Rect(filterBar.x + 10f, filterBar.y + 6f, 180f, 28f);
+                string s = (activeTab == 0) ? hairSearchQuery : (activeTab == 1 ? beardSearchQuery : apparelSearchQuery);
+                string ns = Widgets.TextField(searchRect, s);
+                if (activeTab == 0) hairSearchQuery = ns; else if (activeTab == 1) beardSearchQuery = ns; else apparelSearchQuery = ns;
 
-            // 3. Filters and controls row (only for tabs 0, 1, 2)
-            float filterRowY = tabRect.yMax + 10f;
-            bool showSearchAndModFilters = (activeTab != 3);
-
-            if (showSearchAndModFilters)
-            {
-                // Background card for filters
-                Rect filtersPanelRect = new Rect(inRect.x, filterRowY, inRect.width, 40f);
-                Widgets.DrawRectFast(filtersPanelRect, PanelBgColor);
-
-                Rect searchRect = new Rect(filtersPanelRect.x + 10f, filterRowY + 5f, inRect.width * 0.33f, 30f);
-                Rect modFilterRect = new Rect(filtersPanelRect.x + inRect.width * 0.35f, filterRowY + 5f, inRect.width * 0.33f, 30f);
-                Rect buttonAllRect = new Rect(filtersPanelRect.x + inRect.width * 0.70f, filterRowY + 5f, inRect.width * 0.13f, 30f);
-                Rect buttonNoneRect = new Rect(filtersPanelRect.x + inRect.width * 0.84f, filterRowY + 5f, inRect.width * 0.14f, 30f);
-
-                // Draw search query input
-                string prevSearch = (activeTab == 0) ? hairSearchQuery : (activeTab == 1 ? beardSearchQuery : apparelSearchQuery);
-                string newSearch = Widgets.TextField(searchRect, prevSearch);
-                if (activeTab == 0) hairSearchQuery = newSearch;
-                else if (activeTab == 1) beardSearchQuery = newSearch;
-                else if (activeTab == 2) apparelSearchQuery = newSearch;
-
-                // Draw Mod filter selector
-                string displayMod = selectedModName == "All" ? "NPCStyleLimiter_FilterModAll".Translate().ToString() : "NPCStyleLimiter_FilterMod".Translate(selectedModName).ToString();
-                if (Widgets.ButtonText(modFilterRect, displayMod))
+                Rect modBtn = new Rect(searchRect.xMax + 10f, filterBar.y + 6f, 150f, 28f);
+                string modLabel = selectedModName == "All" ? "NPCStyleLimiter_AllMods".Translate().ToString() : selectedModName;
+                if (Widgets.ButtonText(modBtn, modLabel))
                 {
-                    List<FloatMenuOption> options = new List<FloatMenuOption>();
-                    options.Add(new FloatMenuOption("NPCStyleLimiter_AllMods".Translate(), () => selectedModName = "All"));
-                    HashSet<string> availableMods = new HashSet<string>();
-                    if (activeTab == 0) foreach (var hdef in DefDatabase<HairDef>.AllDefsListForReading) if (hdef != null) availableMods.Add(hdef.modContentPack?.Name ?? "Core");
-                    else if (activeTab == 1) foreach (var bdef in DefDatabase<BeardDef>.AllDefsListForReading) if (bdef != null) availableMods.Add(bdef.modContentPack?.Name ?? "Core");
-                    else if (activeTab == 2) foreach (var adef in DefDatabase<ThingDef>.AllDefsListForReading) if (adef != null && adef.IsApparel) availableMods.Add(adef.modContentPack?.Name ?? "Core");
-                    List<string> sortedMods = availableMods.OrderBy(m => m).ToList();
-                    foreach (var mod in sortedMods) options.Add(new FloatMenuOption(mod, () => selectedModName = mod));
-                    Find.WindowStack.Add(new FloatMenu(options));
+                    List<FloatMenuOption> opts = new List<FloatMenuOption> { new FloatMenuOption("NPCStyleLimiter_AllMods".Translate(), () => selectedModName = "All") };
+                    HashSet<string> mods = new HashSet<string>();
+                    if (activeTab == 0) foreach (var hd in DefDatabase<HairDef>.AllDefsListForReading) if (hd != null) mods.Add(hd.modContentPack?.Name ?? "Core");
+                    else if (activeTab == 1) foreach (var bd in DefDatabase<BeardDef>.AllDefsListForReading) if (bd != null) mods.Add(bd.modContentPack?.Name ?? "Core");
+                    else if (activeTab == 2) foreach (var td in DefDatabase<ThingDef>.AllDefsListForReading) if (td != null && td.IsApparel) mods.Add(td.modContentPack?.Name ?? "Core");
+                    foreach (var m in mods.OrderBy(x => x)) opts.Add(new FloatMenuOption(m, () => selectedModName = m));
+                    Find.WindowStack.Add(new FloatMenu(opts));
                 }
 
-                if (Widgets.ButtonText(buttonAllRect, "NPCStyleLimiter_AllowAll".Translate())) foreach (var def in cachedFilteredDefs) Settings.SetWeight(def, activeGender, 1.0f);
-                if (Widgets.ButtonText(buttonNoneRect, "NPCStyleLimiter_DisallowAll".Translate())) foreach (var def in cachedFilteredDefs) Settings.SetWeight(def, activeGender, 0.0f);
-
-                DrawList(cachedFilteredDefs, filterRowY + 45f, inRect, activeGender);
-            }
-            else
-            {
-                DrawList(cachedFilteredDefs, filterRowY, inRect, activeGender);
+                Rect bulkAllow = new Rect(filterBar.xMax - 180f, filterBar.y + 6f, 85f, 28f);
+                Rect bulkBlock = new Rect(bulkAllow.xMax + 4f, filterBar.y + 6f, 85f, 28f);
+                if (Widgets.ButtonText(bulkAllow, "NPCStyleLimiter_AllowAll".Translate())) foreach (var cdef in cachedFilteredDefs) Settings.SetWeight(cdef, activeGender, 1.0f);
+                if (Widgets.ButtonText(bulkBlock, "NPCStyleLimiter_BlockAll".Translate())) foreach (var cdef in cachedFilteredDefs) Settings.SetWeight(cdef, activeGender, 0.0f);
+                
+                curY = filterBar.yMax + 5f;
             }
 
-            // Bottom Buttons
-            float buttonGap = 4f;
-            float btnW = (inRect.width - buttonGap * 2) / 3f;
-            Rect saveRect = new Rect(inRect.x, inRect.yMax - 35f, btnW, 35f);
-            Rect manageRect = new Rect(saveRect.xMax + buttonGap, inRect.yMax - 35f, btnW, 35f);
-            Rect restoreRect = new Rect(manageRect.xMax + buttonGap, inRect.yMax - 35f, btnW, 35f);
+            // --- MAIN LIST ---
+            DrawModernList(cachedFilteredDefs, curY, inRect, activeGender);
 
-            if (Widgets.ButtonText(saveRect, "NPCStyleLimiter_SaveProfile".Translate())) Find.WindowStack.Add(new Dialog_ManageConfigs(true));
-            if (Widgets.ButtonText(manageRect, "NPCStyleLimiter_LoadManageProfiles".Translate())) Find.WindowStack.Add(new Dialog_ManageConfigs());
-            if (Widgets.ButtonText(restoreRect, "NPCStyleLimiter_RestoreDefaults".Translate())) { Settings.ResetToDefaults(); Settings.Write(); Messages.Message("NPCStyleLimiter_DefaultsRestored".Translate(), MessageTypeDefOf.CautionInput, false); }
+            // --- BOTTOM BAR ---
+            Rect bottomBar = new Rect(inRect.x, inRect.yMax - 40f, inRect.width, 40f);
+            float bW = (bottomBar.width - 6f) / 2f;
+            if (Widgets.ButtonText(new Rect(bottomBar.x, bottomBar.y + 5f, bW, 32f), "NPCStyleLimiter_SaveProfile".Translate())) Find.WindowStack.Add(new Dialog_ManageConfigs(true));
+            if (Widgets.ButtonText(new Rect(bottomBar.xMax - bW, bottomBar.y + 5f, bW, 32f), "NPCStyleLimiter_LoadManageProfiles".Translate())) Find.WindowStack.Add(new Dialog_ManageConfigs());
         }
 
-        private void DrawList(List<Def> defs, float startY, Rect contentRect, Gender activeGender)
+        private void DrawModernList(List<Def> defs, float y, Rect inRect, Gender gender)
         {
-            float listHeight = contentRect.height - (startY - contentRect.y) - 45f;
-            Rect scrollOuterRect = new Rect(contentRect.x, startY, contentRect.width, listHeight);
-            if (defs == null || defs.Count == 0)
+            float h = inRect.yMax - y - 45f;
+            Rect outer = new Rect(inRect.x, y, inRect.width, h);
+            if (defs.Count == 0) { Widgets.Label(outer, "NPCStyleLimiter_NoResultsFound".Translate()); return; }
+
+            float rH = 40f;
+            Rect view = new Rect(0, 0, outer.width - 16f, defs.Count * rH);
+            Widgets.BeginScrollView(outer, ref scrollPosition, view);
+            
+            int start = Mathf.FloorToInt(scrollPosition.y / rH);
+            int end = Mathf.CeilToInt((scrollPosition.y + h) / rH);
+            start = Mathf.Clamp(start, 0, defs.Count - 1);
+            end = Mathf.Clamp(end, 0, defs.Count - 1);
+
+            for (int i = start; i <= end; i++)
             {
-                Widgets.DrawRectFast(scrollOuterRect, PanelBgColor);
-                TextAnchor originalAnchor = Text.Anchor; Text.Anchor = TextAnchor.MiddleCenter; GUI.color = InactiveTextColor;
-                Widgets.Label(scrollOuterRect, "NPCStyleLimiter_NoResultsFound".Translate());
-                GUI.color = Color.white; Text.Anchor = originalAnchor; return;
-            }
+                Def d = defs[i];
+                Rect row = new Rect(0, i * rH, view.width, rH);
+                if (Mouse.IsOver(row)) Widgets.DrawRectFast(row, HoverRowColor);
+                else if (i % 2 == 1) Widgets.DrawLightHighlight(row);
 
-            float rowHeight = 38f;
-            float viewHeight = defs.Count * rowHeight;
-            Rect scrollInnerRect = new Rect(0f, 0f, scrollOuterRect.width - 16f, viewHeight);
-            Widgets.BeginScrollView(scrollOuterRect, ref scrollPosition, scrollInnerRect);
-            int firstIdx = Mathf.FloorToInt(scrollPosition.y / rowHeight);
-            int lastIdx = Mathf.CeilToInt((scrollPosition.y + listHeight) / rowHeight);
-            firstIdx = Mathf.Clamp(firstIdx, 0, defs.Count - 1);
-            lastIdx = Mathf.Clamp(lastIdx, 0, defs.Count - 1);
+                float w = Settings.GetWeight(d, gender);
+                
+                // Toggle
+                Rect tRect = new Rect(8f, row.y + (rH - 20f) / 2f, 36f, 20f);
+                bool active = DrawCustomCheckbox(tRect, w > 0f);
+                if (active != (w > 0f)) Settings.SetWeight(d, gender, active ? 1.0f : 0.0f);
 
-            for (int i = firstIdx; i <= lastIdx; i++)
-            {
-                Def def = defs[i]; float currentY = i * rowHeight; Rect rowRect = new Rect(0f, currentY, scrollInnerRect.width, rowHeight);
-                if (Mouse.IsOver(rowRect)) Widgets.DrawRectFast(rowRect, HoverRowColor); else if (i % 2 == 1) Widgets.DrawLightHighlight(rowRect);
+                // Icon
+                Texture2D tex = (d is StyleItemDef s) ? s.Icon : (d is ThingDef t ? t.uiIcon : null);
+                if (tex != null) {
+                    GUI.color = (d is ThingDef t2) ? t2.uiIconColor : Color.white;
+                    Widgets.DrawTextureFitted(new Rect(50f, row.y + 5f, 30f, 30f), tex, 1f);
+                    GUI.color = Color.white;
+                }
 
-                float currentWeight = Settings.GetWeight(def, activeGender);
-                bool isAllowed = currentWeight > 0f;
-                Rect checkboxRect = new Rect(10f, currentY, 36f, rowHeight);
-                bool checkState = DrawCustomCheckbox(checkboxRect, isAllowed);
-                if (checkState != isAllowed) Settings.SetWeight(def, activeGender, checkState ? 1.0f : 0.0f);
-
-                Texture2D iconTex = (def is StyleItemDef sid) ? sid.Icon : (def is ThingDef td ? td.uiIcon : null);
-                Color iconColor = (def is ThingDef td2) ? td2.uiIconColor : Color.white;
-                if (iconTex != null) { Rect iconRect = new Rect(56f, currentY + (rowHeight - 24f) / 2f, 24f, 24f); GUI.color = iconColor; Widgets.DrawTextureFitted(iconRect, iconTex, 1f); GUI.color = Color.white; }
-
-                Rect labelRect = new Rect(90f, currentY, scrollInnerRect.width * 0.35f, rowHeight);
-                Text.Anchor = TextAnchor.MiddleLeft; Widgets.Label(labelRect, (def.LabelCap.Resolve() ?? "") + $" ({def.defName})");
-
-                Rect sliderRect = new Rect(scrollInnerRect.width * 0.50f, currentY, scrollInnerRect.width * 0.22f, rowHeight);
-                float newWeight = DrawCustomSlider(sliderRect, currentWeight, 0f, 5f, 0.1f);
-                if (newWeight != currentWeight) Settings.SetWeight(def, activeGender, newWeight);
-
-                Rect valLabelRect = new Rect(scrollInnerRect.width * 0.74f, currentY, 50f, rowHeight);
-                if (newWeight > 0f) { GUI.color = AccentColor; Widgets.Label(valLabelRect, newWeight.ToString("0.0") + "x"); GUI.color = Color.white; }
-                else { GUI.color = Color.gray; Widgets.Label(valLabelRect, "0.0x"); GUI.color = Color.white; }
-
-                Rect modLabelRect = new Rect(scrollInnerRect.width * 0.81f, currentY, scrollInnerRect.width * 0.19f, rowHeight);
-                string modName = def.modContentPack?.Name ?? "Core";
-                Text.Font = GameFont.Tiny; GUI.color = Color.gray; Widgets.Label(modLabelRect, modName);
-                GUI.color = Color.white; Text.Font = GameFont.Small; Text.Anchor = TextAnchor.UpperLeft;
+                // Label
+                Text.Anchor = TextAnchor.MiddleLeft;
+                string label = d.LabelCap.NullOrEmpty() ? d.defName : (string)d.LabelCap;
+                if (Settings.debugMode) label += " [" + d.defName + "]";
+                Widgets.Label(new Rect(90f, row.y, view.width * 0.45f, rH), label);
+                
+                // Weight Slider
+                Rect sRect = new Rect(view.width * 0.55f, row.y + (rH - 24f) / 2f, 120f, 24f);
+                float nw = DrawCustomSlider(sRect, w, 0f, 5f, 0.1f);
+                if (nw != w) Settings.SetWeight(d, gender, nw);
+                
+                Widgets.Label(new Rect(sRect.xMax + 8f, row.y, 40f, rH), nw.ToString("0.0") + "x");
+                
+                // Mod Name
+                Text.Anchor = TextAnchor.MiddleRight;
+                GUI.color = InactiveTextColor;
+                Text.Font = GameFont.Tiny;
+                Widgets.Label(new Rect(view.width - 150f, row.y, 140f, rH), d.modContentPack?.Name ?? "Core");
+                Text.Font = GameFont.Small;
+                GUI.color = Color.white;
+                Text.Anchor = TextAnchor.UpperLeft;
             }
             Widgets.EndScrollView();
         }
 
-        private bool DrawCustomTab(Rect rect, string label, bool selected)
+        private bool DrawModernTab(Rect rect, string label, bool selected)
         {
-            bool hovered = Mouse.IsOver(rect);
-            if (hovered) Widgets.DrawRectFast(rect, new Color(1f, 1f, 1f, 0.03f));
-            TextAnchor originalAnchor = Text.Anchor; Text.Anchor = TextAnchor.MiddleCenter;
-            if (selected) GUI.color = AccentColor; else GUI.color = hovered ? Color.white : InactiveTextColor;
-            Widgets.Label(rect, label); GUI.color = Color.white; Text.Anchor = originalAnchor;
+            if (Mouse.IsOver(rect)) Widgets.DrawRectFast(rect, HoverRowColor);
+            Text.Anchor = TextAnchor.MiddleCenter;
+            GUI.color = selected ? AccentColor : InactiveTextColor;
+            Widgets.Label(rect, label);
             if (selected) Widgets.DrawRectFast(new Rect(rect.x, rect.yMax - 3f, rect.width, 3f), AccentColor);
-            else if (hovered) Widgets.DrawRectFast(new Rect(rect.x, rect.yMax - 3f, rect.width, 3f), new Color(1f, 1f, 1f, 0.15f));
+            GUI.color = Color.white;
+            Text.Anchor = TextAnchor.UpperLeft;
             return Widgets.ButtonInvisible(rect);
         }
 
-        private float DrawCustomSlider(Rect rect, float value, float min, float max, float roundTo = -1f)
+        private float DrawCustomSlider(Rect rect, float val, float min, float max, float step = -1f)
         {
-            int controlID = GUIUtility.GetControlID(FocusType.Passive);
-            float trackHeight = 6f; Rect trackRect = new Rect(rect.x, rect.y + (rect.height - trackHeight) / 2f, rect.width, trackHeight);
-            Widgets.DrawRectFast(trackRect, SliderTrackColor);
-            float pct = Mathf.Clamp01((value - min) / (max - min));
-            if (pct > 0f) Widgets.DrawRectFast(new Rect(trackRect.x, trackRect.y, trackRect.width * pct, trackHeight), AccentColor);
+            int id = GUIUtility.GetControlID(FocusType.Passive);
+            Event ev = Event.current;
 
-            float thumbWidth = 10f, thumbHeight = 14f;
-            Rect thumbRect = new Rect(trackRect.x + trackRect.width * pct - thumbWidth / 2f, rect.y + (rect.height - thumbHeight) / 2f, thumbWidth, thumbHeight);
-            Color thumbColor = (GUIUtility.hotControl == controlID || Mouse.IsOver(thumbRect)) ? Color.white : (Mouse.IsOver(rect) ? new Color(0.9f, 0.9f, 0.9f) : new Color(0.75f, 0.75f, 0.75f));
-            Widgets.DrawRectFast(thumbRect, thumbColor);
+            if (ev.type == EventType.MouseDown && Mouse.IsOver(rect)) { GUIUtility.hotControl = id; ev.Use(); }
+            if (GUIUtility.hotControl == id)
+            {
+                if (ev.type == EventType.MouseDrag || ev.type == EventType.MouseDown)
+                {
+                    val = Mathf.Clamp(min + (max - min) * ((ev.mousePosition.x - rect.x) / rect.width), min, max);
+                    if (step > 0) val = Mathf.Round(val / step) * step;
+                    ev.Use();
+                }
+                else if (ev.type == EventType.MouseUp) { GUIUtility.hotControl = 0; ev.Use(); }
+            }
 
-            Event cur = Event.current;
-            if (cur.type == EventType.MouseDown && Mouse.IsOver(rect)) { GUIUtility.hotControl = controlID; value = Mathf.Clamp(min + (max - min) * ((cur.mousePosition.x - rect.x) / rect.width), min, max); if (roundTo > 0f) value = Mathf.Round(value / roundTo) * roundTo; cur.Use(); }
-            else if (cur.type == EventType.MouseDrag && GUIUtility.hotControl == controlID) { value = Mathf.Clamp(min + (max - min) * ((cur.mousePosition.x - rect.x) / rect.width), min, max); if (roundTo > 0f) value = Mathf.Round(value / roundTo) * roundTo; cur.Use(); }
-            else if (cur.type == EventType.MouseUp && GUIUtility.hotControl == controlID) { GUIUtility.hotControl = 0; cur.Use(); }
-            return value;
+            float tH = 4f; Rect tR = new Rect(rect.x, rect.y + (rect.height - tH) / 2f, rect.width, tH);
+            Widgets.DrawRectFast(tR, SliderTrackColor);
+            float p = Mathf.Clamp01((val - min) / (max - min));
+            if (p > 0) Widgets.DrawRectFast(new Rect(tR.x, tR.y, tR.width * p, tH), AccentColor);
+            
+            Rect kR = new Rect(tR.x + tR.width * p - 5f, rect.y + (rect.height - 14f) / 2f, 10f, 14f);
+            Widgets.DrawRectFast(kR, (GUIUtility.hotControl == id || Mouse.IsOver(rect)) ? Color.white : new Color(0.8f, 0.8f, 0.8f));
+
+            return val;
         }
 
         private bool DrawCustomCheckbox(Rect rect, bool active)
         {
-            float switchW = 34f, switchH = 18f; Rect switchRect = new Rect(rect.x, rect.y + (rect.height - switchH) / 2f, switchW, switchH);
-            Widgets.DrawRectFast(switchRect, active ? AccentColor : new Color(0.18f, 0.18f, 0.18f));
-            float knobSize = 14f; Rect knobRect = new Rect(active ? (switchRect.xMax - knobSize - 2f) : (switchRect.x + 2f), switchRect.y + (switchH - knobSize) / 2f, knobSize, knobSize);
-            Widgets.DrawRectFast(knobRect, Color.white);
-            return Widgets.ButtonInvisible(switchRect) ? !active : active;
+            Widgets.DrawRectFast(rect, active ? AccentColor : new Color(0.2f, 0.2f, 0.2f));
+            float kS = 14f;
+            Rect kR = new Rect(active ? (rect.xMax - kS - 3f) : (rect.x + 3f), rect.y + (rect.height - kS) / 2f, kS, kS);
+            Widgets.DrawRectFast(kR, Color.white);
+            return Widgets.ButtonInvisible(rect) ? !active : active;
         }
     }
 
@@ -439,8 +341,7 @@ namespace NPCStyleLimiter
     {
         static ModStartup()
         {
-            var harmony = new Harmony("rinmiolc.npcstylelimiter");
-            harmony.PatchAll();
+            new Harmony("rinmiolc.npcstylelimiter").PatchAll();
             if (CustomizerMod.Settings != null) CustomizerMod.Settings.ResolveRuntimeWeights();
         }
     }

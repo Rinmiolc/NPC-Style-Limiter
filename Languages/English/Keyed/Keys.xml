@@ -7,7 +7,7 @@
   <NPCStyleLimiter_FilterMod>Filter Mod: {0}</NPCStyleLimiter_FilterMod>
   <NPCStyleLimiter_AllMods>All Mods</NPCStyleLimiter_AllMods>
   <NPCStyleLimiter_AllowAll>Allow All</NPCStyleLimiter_AllowAll>
-  <NPCStyleLimiter_DisallowAll>Disallow All</NPCStyleLimiter_DisallowAll>
+  <NPCStyleLimiter_BlockAll>Block All</NPCStyleLimiter_BlockAll>
   <NPCStyleLimiter_SaveProfile>Save Profile</NPCStyleLimiter_SaveProfile>
   <NPCStyleLimiter_LoadManageProfiles>Load/Manage</NPCStyleLimiter_LoadManageProfiles>
   <NPCStyleLimiter_SettingsSaved>NPC Style Limiter settings saved.</NPCStyleLimiter_SettingsSaved>
@@ -23,13 +23,17 @@
   <NPCStyleLimiter_NoResultsFound>No matching items found.</NPCStyleLimiter_NoResultsFound>
   <NPCStyleLimiter_ManageProfiles>Profiles</NPCStyleLimiter_ManageProfiles>
   <NPCStyleLimiter_ProfileManager>Profile Manager</NPCStyleLimiter_ProfileManager>
+  <NPCStyleLimiter_ProfileLabel>Active Profile</NPCStyleLimiter_ProfileLabel>
+  <NPCStyleLimiter_CurrentProfileLabel>Current Profile</NPCStyleLimiter_CurrentProfileLabel>
   <NPCStyleLimiter_CurrentProfile>Current: {0}</NPCStyleLimiter_CurrentProfile>
+  <NPCStyleLimiter_StoredProfiles>Stored Profiles</NPCStyleLimiter_StoredProfiles>
   <NPCStyleLimiter_NoActiveProfile>No active profile</NPCStyleLimiter_NoActiveProfile>
   <NPCStyleLimiter_SaveAs>Save As:</NPCStyleLimiter_SaveAs>
   <NPCStyleLimiter_Save>Save</NPCStyleLimiter_Save>
   <NPCStyleLimiter_Load>Load</NPCStyleLimiter_Load>
   <NPCStyleLimiter_Rename>Rename</NPCStyleLimiter_Rename>
   <NPCStyleLimiter_Delete>Delete</NPCStyleLimiter_Delete>
+  <NPCStyleLimiter_OK>OK</NPCStyleLimiter_OK>
   <NPCStyleLimiter_Confirm>OK</NPCStyleLimiter_Confirm>
   <NPCStyleLimiter_Cancel>Cancel</NPCStyleLimiter_Cancel>
   <NPCStyleLimiter_ProfileSaved>Profile "{0}" saved.</NPCStyleLimiter_ProfileSaved>

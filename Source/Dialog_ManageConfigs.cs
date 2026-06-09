@@ -2,7 +2,9 @@
 // Licensed under the GNU General Public License v3.0.
 // See LICENSE file in the project root for full license information.
 
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using Verse;
 using RimWorld;
@@ -11,7 +13,7 @@ namespace NPCStyleLimiter
 {
     public class Dialog_ManageConfigs : Window
     {
-        public override Vector2 InitialSize => new Vector2(520f, 520f);
+        public override Vector2 InitialSize => new Vector2(560f, 580f);
 
         private Vector2 scrollPosition = Vector2.zero;
         private string saveAsName = "";
@@ -19,10 +21,12 @@ namespace NPCStyleLimiter
         private string renameTarget = null;
         private bool focusSaveField = false;
 
+        // Modern UI Theme Colors
         private static readonly Color AccentColor = new Color(0.78f, 0.55f, 0.15f);
-        private static readonly Color PanelBgColor = new Color(1f, 1f, 1f, 0.02f);
-        private static readonly Color HoverRowColor = new Color(1f, 1f, 1f, 0.04f);
+        private static readonly Color PanelBgColor = new Color(1f, 1f, 1f, 0.03f);
+        private static readonly Color HoverRowColor = new Color(1f, 1f, 1f, 0.05f);
         private static readonly Color InactiveTextColor = new Color(0.55f, 0.6f, 0.62f);
+        private static readonly Color CardBgColor = new Color(0f, 0f, 0f, 0.15f);
 
         public Dialog_ManageConfigs(bool focusSave = false)
         {
@@ -31,162 +35,214 @@ namespace NPCStyleLimiter
             doCloseX = true;
             absorbInputAroundWindow = true;
             closeOnClickedOutside = true;
+            draggable = true;
         }
 
         public override void DoWindowContents(Rect inRect)
         {
-            float curY = inRect.y;
-
-            // Title
             Text.Font = GameFont.Medium;
-            Widgets.Label(new Rect(inRect.x, curY, inRect.width, 30f), "NPCStyleLimiter_ProfileManager".Translate());
+            Rect titleRect = new Rect(inRect.x, inRect.y, inRect.width, 35f);
+            Widgets.Label(titleRect, "NPCStyleLimiter_ProfileManager".Translate());
             Text.Font = GameFont.Small;
-            curY += 35f;
 
-            // Current active profile
-            string activeName = CustomizerMod.Settings.currentProfileName ?? "Default";
-            GUI.color = AccentColor;
-            Widgets.Label(new Rect(inRect.x, curY, inRect.width, 22f), "NPCStyleLimiter_CurrentProfile".Translate(activeName));
-            GUI.color = Color.white;
-            curY += 26f;
+            float curY = titleRect.yMax + 10f;
 
-            Widgets.DrawRectFast(new Rect(inRect.x, curY, inRect.width, 1f), new Color(1f, 1f, 1f, 0.1f));
-            curY += 12f;
-
-            // Save Section
-            Widgets.Label(new Rect(inRect.x, curY + 3f, 100f, 24f), "NPCStyleLimiter_SaveAs".Translate());
-            Rect nameFieldRect = new Rect(inRect.x + 105f, curY, inRect.width - 200f, 24f);
+            // 1. Current Status Card
+            Rect statusCard = new Rect(inRect.x, curY, inRect.width, 45f);
+            Widgets.DrawRectFast(statusCard, CardBgColor);
             
+            string activeName = CustomizerMod.Settings.currentProfileName ?? "Default";
+            Rect statusLabelRect = new Rect(statusCard.x + 12f, statusCard.y, statusCard.width - 24f, statusCard.height);
+            Text.Anchor = TextAnchor.MiddleLeft;
+            GUI.color = InactiveTextColor;
+            Widgets.Label(new Rect(statusLabelRect.x, statusLabelRect.y, 100f, statusLabelRect.height), "NPCStyleLimiter_CurrentProfileLabel".Translate());
+            GUI.color = AccentColor;
+            Text.Font = GameFont.Small;
+            Widgets.Label(new Rect(statusLabelRect.x + 110f, statusLabelRect.y, statusLabelRect.width - 110f, statusLabelRect.height), activeName);
+            Text.Anchor = TextAnchor.UpperLeft;
+            GUI.color = Color.white;
+
+            curY = statusCard.yMax + 15f;
+
+            // 2. Save New Profile Card
+            Rect saveCard = new Rect(inRect.x, curY, inRect.width, 80f);
+            Widgets.DrawRectFast(saveCard, CardBgColor);
+            
+            Rect saveContentRect = saveCard.ContractedBy(12f);
+            Widgets.Label(new Rect(saveContentRect.x, saveContentRect.y, 200f, 24f), "NPCStyleLimiter_SaveAs".Translate());
+            
+            Rect inputRect = new Rect(saveContentRect.x, saveContentRect.y + 28f, saveContentRect.width - 100f, 30f);
             GUI.SetNextControlName("SaveNameField");
-            saveAsName = Widgets.TextField(nameFieldRect, saveAsName);
+            saveAsName = Widgets.TextField(inputRect, saveAsName);
             if (focusSaveField)
             {
                 GUI.FocusControl("SaveNameField");
                 focusSaveField = false;
             }
 
-            Rect saveBtnRect = new Rect(inRect.xMax - 85f, curY, 85f, 24f);
+            Rect saveBtnRect = new Rect(inputRect.xMax + 8f, inputRect.y, 92f, 30f);
             bool canSave = !string.IsNullOrEmpty(saveAsName.Trim()) && saveAsName.Trim() != "Default";
             
-            if (!canSave) GUI.color = Color.gray;
+            if (!canSave) GUI.color = new Color(1f, 1f, 1f, 0.3f);
             if (Widgets.ButtonText(saveBtnRect, "NPCStyleLimiter_Save".Translate()) && canSave)
             {
-                string trimName = saveAsName.Trim();
-                if (CustomizerMod.Settings.ListProfiles().Contains(trimName))
-                {
-                    Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation("NPCStyleLimiter_ConfirmOverwrite".Translate(trimName), () =>
-                    {
-                        CustomizerMod.Settings.SaveProfile(trimName);
-                        Messages.Message("NPCStyleLimiter_ProfileSaved".Translate(trimName), MessageTypeDefOf.TaskCompletion, false);
-                    }));
-                }
-                else
-                {
-                    CustomizerMod.Settings.SaveProfile(trimName);
-                    Messages.Message("NPCStyleLimiter_ProfileSaved".Translate(trimName), MessageTypeDefOf.TaskCompletion, false);
-                }
+                DoSave(saveAsName.Trim());
             }
             GUI.color = Color.white;
-            curY += 36f;
 
-            Widgets.DrawRectFast(new Rect(inRect.x, curY, inRect.width, 1f), new Color(1f, 1f, 1f, 0.1f));
-            curY += 12f;
+            curY = saveCard.yMax + 15f;
 
-            // Profile list (scrollable)
+            // 3. Profile List Section
             List<string> profiles = CustomizerMod.Settings.ListProfiles();
             if (!profiles.Contains("Default")) profiles.Insert(0, "Default");
 
-            float listHeight = inRect.yMax - curY - 10f;
-            Rect scrollOuterRect = new Rect(inRect.x, curY, inRect.width, listHeight);
+            float listHeaderY = curY;
+            Widgets.Label(new Rect(inRect.x + 5f, listHeaderY, 200f, 24f), "NPCStyleLimiter_StoredProfiles".Translate());
+            curY += 28f;
 
-            float rowHeight = 36f;
-            float viewHeight = profiles.Count * rowHeight;
-            Rect scrollInnerRect = new Rect(0f, 0f, scrollOuterRect.width - 16f, viewHeight);
+            Rect listOuterRect = new Rect(inRect.x, curY, inRect.width, inRect.yMax - curY - 10f);
+            Widgets.DrawRectFast(listOuterRect, new Color(0f, 0f, 0f, 0.1f));
 
-            Widgets.BeginScrollView(scrollOuterRect, ref scrollPosition, scrollInnerRect);
+            float rowHeight = 42f;
+            float viewHeight = Math.Max(listOuterRect.height, profiles.Count * rowHeight);
+            Rect scrollInnerRect = new Rect(0f, 0f, listOuterRect.width - 16f, viewHeight);
 
+            Widgets.BeginScrollView(listOuterRect, ref scrollPosition, scrollInnerRect);
+            
             for (int i = 0; i < profiles.Count; i++)
             {
-                string profileName = profiles[i];
-                float rowY = i * rowHeight;
-                Rect rowRect = new Rect(0f, rowY, scrollInnerRect.width, rowHeight);
+                string pName = profiles[i];
+                Rect rowRect = new Rect(0f, i * rowHeight, scrollInnerRect.width, rowHeight);
+                bool isDefault = pName == "Default";
+                bool isActive = pName == CustomizerMod.Settings.currentProfileName;
+                bool isRenaming = renameTarget == pName;
 
-                bool isDefault = profileName == "Default";
-                bool isActive = profileName == CustomizerMod.Settings.currentProfileName;
-                bool isRenaming = renameTarget == profileName;
-
-                // Row background
-                if (isActive) Widgets.DrawRectFast(rowRect, new Color(0.78f, 0.55f, 0.15f, 0.12f));
+                // Row highlights
+                if (isActive) Widgets.DrawRectFast(rowRect, new Color(0.78f, 0.55f, 0.15f, 0.08f));
                 else if (Mouse.IsOver(rowRect)) Widgets.DrawRectFast(rowRect, HoverRowColor);
-                else if (i % 2 == 1) Widgets.DrawLightHighlight(rowRect);
+                if (i % 2 == 1) Widgets.DrawLightHighlight(rowRect);
 
-                // Active indicator dot
-                if (isActive)
-                {
-                    GUI.color = AccentColor;
-                    Widgets.Label(new Rect(4f, rowY + 8f, 16f, 20f), "\u25CF");
-                    GUI.color = Color.white;
-                }
-
-                float nameWidth = scrollInnerRect.width * 0.42f;
+                // Entry content
+                Rect entryRect = rowRect.ContractedBy(4f);
                 if (isRenaming)
                 {
-                    // ... rename logic (same as before)
+                    DrawRenameField(entryRect, pName);
                 }
                 else
                 {
-                    TextAnchor prevAnchor = Text.Anchor;
-                    Text.Anchor = TextAnchor.MiddleLeft;
-                    if (isActive) GUI.color = AccentColor;
-                    string labelText = isDefault ? (profileName + " (" + "NPCStyleLimiter_ReadOnly".Translate().ToString() + ")") : profileName;
-                    Widgets.Label(new Rect(24f, rowY, nameWidth, rowHeight), labelText);
-                    GUI.color = Color.white;
-                    Text.Anchor = prevAnchor;
-
-                    // Action buttons
-                    float btnW = 56f;
-                    float btnH = 24f;
-                    float btnY = rowY + (rowHeight - btnH) / 2f;
-                    float btnX = scrollInnerRect.width - 180f;
-
-                    // Rename (Hidden for Default)
-                    if (!isDefault)
-                    {
-                        if (Widgets.ButtonText(new Rect(btnX, btnY, btnW, btnH), "NPCStyleLimiter_Rename".Translate()))
-                        {
-                            renameTarget = profileName;
-                            renameBuffer = profileName;
-                        }
-                    }
-                    btnX += btnW + 4f;
-
-                    // Load
-                    if (isActive) GUI.color = Color.gray;
-                    if (Widgets.ButtonText(new Rect(btnX, btnY, btnW, btnH), "NPCStyleLimiter_Load".Translate()) && !isActive)
-                    {
-                        if (isDefault) CustomizerMod.Settings.ResetToDefaults();
-                        else CustomizerMod.Settings.LoadProfile(profileName);
-                        Messages.Message("NPCStyleLimiter_ProfileLoaded".Translate(profileName), MessageTypeDefOf.TaskCompletion, false);
-                        Close();
-                    }
-                    GUI.color = Color.white;
-                    btnX += btnW + 4f;
-
-                    // Delete (Hidden for Default)
-                    if (!isDefault)
-                    {
-                        if (isActive) GUI.color = Color.gray;
-                        if (Widgets.ButtonText(new Rect(btnX, btnY, btnW, btnH), "NPCStyleLimiter_Delete".Translate()) && !isActive)
-                        {
-                            CustomizerMod.Settings.DeleteProfile(profileName);
-                        }
-                        GUI.color = Color.white;
-                    }
+                    DrawProfileRow(entryRect, pName, isActive, isDefault);
                 }
             }
-            Widgets.EndScrollView();
 
             Widgets.EndScrollView();
+        }
+
+        private void DrawProfileRow(Rect rect, string name, bool isActive, bool isDefault)
+        {
+            float curX = rect.x + 8f;
+            
+            // Icon/Status
+            if (isActive)
+            {
+                GUI.color = AccentColor;
+                Widgets.Label(new Rect(curX, rect.y + 6f, 20f, 24f), "\u25CF");
+                GUI.color = Color.white;
+            }
+            curX += 20f;
+
+            // Name
+            Text.Anchor = TextAnchor.MiddleLeft;
+            string display = name;
+            if (isDefault)
+            {
+                GUI.color = InactiveTextColor;
+                display += " (" + "NPCStyleLimiter_ReadOnly".Translate() + ")";
+            }
+            else if (isActive)
+            {
+                GUI.color = AccentColor;
+            }
+            Widgets.Label(new Rect(curX, rect.y, rect.width * 0.45f, rect.height), display);
+            GUI.color = Color.white;
+            Text.Anchor = TextAnchor.UpperLeft;
+
+            // Buttons
+            float btnW = 60f;
+            float btnH = 26f;
+            float btnY = rect.y + (rect.height - btnH) / 2f;
+            float btnX = rect.xMax - 10f;
+
+            // Load
+            btnX -= btnW;
+            if (isActive) GUI.color = new Color(1f, 1f, 1f, 0.3f);
+            if (Widgets.ButtonText(new Rect(btnX, btnY, btnW, btnH), "NPCStyleLimiter_Load".Translate()) && !isActive)
+            {
+                if (isDefault) CustomizerMod.Settings.ResetToDefaults();
+                else CustomizerMod.Settings.LoadProfile(name);
+                Messages.Message("NPCStyleLimiter_ProfileLoaded".Translate(name), MessageTypeDefOf.TaskCompletion, false);
+                Close();
+            }
+            GUI.color = Color.white;
+
+            if (!isDefault)
+            {
+                // Delete
+                btnX -= (btnW + 4f);
+                if (isActive) GUI.color = new Color(1f, 1f, 1f, 0.3f);
+                if (Widgets.ButtonText(new Rect(btnX, btnY, btnW, btnH), "NPCStyleLimiter_Delete".Translate()) && !isActive)
+                {
+                    Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation("ConfirmDelete".Translate(name), () => {
+                        CustomizerMod.Settings.DeleteProfile(name);
+                    }, true));
+                }
+                GUI.color = Color.white;
+
+                // Rename
+                btnX -= (btnW + 4f);
+                if (Widgets.ButtonText(new Rect(btnX, btnY, btnW, btnH), "NPCStyleLimiter_Rename".Translate()))
+                {
+                    renameTarget = name;
+                    renameBuffer = name;
+                }
+            }
+        }
+
+        private void DrawRenameField(Rect rect, string originalName)
+        {
+            float fieldW = rect.width * 0.6f;
+            renameBuffer = Widgets.TextField(new Rect(rect.x + 28f, rect.y + 4f, fieldW, 28f), renameBuffer);
+            
+            float btnW = 45f;
+            if (Widgets.ButtonText(new Rect(rect.x + 28f + fieldW + 6f, rect.y + 4f, btnW, 28f), "NPCStyleLimiter_OK".Translate()))
+            {
+                string trim = renameBuffer.Trim();
+                if (!string.IsNullOrEmpty(trim) && trim != originalName)
+                {
+                    CustomizerMod.Settings.RenameProfile(originalName, trim);
+                }
+                renameTarget = null;
+            }
+            if (Widgets.ButtonText(new Rect(rect.x + 28f + fieldW + btnW + 10f, rect.y + 4f, btnW, 28f), "NPCStyleLimiter_Cancel".Translate()))
+            {
+                renameTarget = null;
+            }
+        }
+
+        private void DoSave(string name)
+        {
+            if (CustomizerMod.Settings.ListProfiles().Contains(name))
+            {
+                Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation("NPCStyleLimiter_ConfirmOverwrite".Translate(name), () =>
+                {
+                    CustomizerMod.Settings.SaveProfile(name);
+                    Messages.Message("NPCStyleLimiter_ProfileSaved".Translate(name), MessageTypeDefOf.TaskCompletion, false);
+                }));
+            }
+            else
+            {
+                CustomizerMod.Settings.SaveProfile(name);
+                Messages.Message("NPCStyleLimiter_ProfileSaved".Translate(name), MessageTypeDefOf.TaskCompletion, false);
+            }
         }
     }
 }

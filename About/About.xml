@@ -2,7 +2,7 @@
 <ModMetaData>
   <name>NPC Style Limiter</name>
   <author>Rinmiolc</author>
-  <modVersion>1.0.2</modVersion>
+  <modVersion>1.1.0</modVersion>
   <packageId>Rinmiolc.NPCStyleLimiter</packageId>
   <supportedVersions>
     <li>1.6</li>
