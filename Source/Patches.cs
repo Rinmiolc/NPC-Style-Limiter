@@ -18,11 +18,11 @@ namespace NPCStyleLimiter
         [HarmonyPrefix]
         public static void Prefix(ref PawnGenerationRequest request)
         {
-            PawnGenerationState.Enter();
+            PawnGenerationState.Enter(request.Context);
 
             // Adjust gender ratio if enabled and request does not dictate a fixed gender (only for humanlikes to avoid breaking animals/mechanoids)
             // 若启用了自定义男女比例，且当前请求未固定性别，则重新分配性别（仅针对人类，避免干扰动物和机械族）
-            if (CustomizerMod.Settings.adjustGenderRatio && !request.FixedGender.HasValue &&
+            if (PawnGenerationState.IsGeneratingNPC && CustomizerMod.Settings.adjustGenderRatio && !request.FixedGender.HasValue &&
                 request.KindDef?.RaceProps != null && request.KindDef.RaceProps.Humanlike)
             {
                 // Do not override if the specific PawnKindDef has a fixed gender requirement
@@ -52,7 +52,7 @@ namespace NPCStyleLimiter
         [HarmonyPostfix]
         public static void Postfix(Pawn pawn, StyleItemDef styleItemDef, ref bool __result)
         {
-            if (__result && PawnGenerationState.IsGenerating)
+            if (__result && PawnGenerationState.IsGeneratingNPC)
             {
                 // Defensive null checks
                 // 防御性空值检查
@@ -78,7 +78,7 @@ namespace NPCStyleLimiter
         [HarmonyPostfix]
         public static void Postfix(StyleItemDef styleItem, Pawn pawn, ref float __result)
         {
-            if (PawnGenerationState.IsGenerating && __result > 0f && styleItem != null && pawn != null)
+            if (PawnGenerationState.IsGeneratingNPC && __result > 0f && styleItem != null && pawn != null)
             {
                 float w = CustomizerMod.Settings.GetWeight(styleItem, pawn.gender);
                 __result *= w;
@@ -125,11 +125,11 @@ namespace NPCStyleLimiter
         [HarmonyPostfix]
         public static void Postfix(Pawn pawn, ref BodyTypeDef __result)
         {
-            if (PawnGenerationState.IsGenerating && __result != null && pawn != null)
+            if (PawnGenerationState.IsGeneratingNPC && __result != null && pawn != null)
             {
-                // Only adjust for standard humans and standard adult body types to prevent compatibility issues with alien races
-                // 仅针对标准人类以及处于正常成年体型范围的 Pawn 进行调整，以防破坏异形种族的贴图和骨骼
-                if (pawn.def == ThingDefOf.Human && __result != BodyTypeDefOf.Baby && __result != BodyTypeDefOf.Child)
+                // Expanded compatibility for HAR and other humanlikes
+                // 扩大对 HAR 及其他类人种族的兼容性
+                if (pawn.RaceProps.Humanlike && __result != BodyTypeDefOf.Baby && __result != BodyTypeDefOf.Child)
                 {
                     BodyTypeDef customType = GetWeightedBodyTypeFor(pawn, __result);
                     if (customType != null)
@@ -142,68 +142,59 @@ namespace NPCStyleLimiter
 
         private static BodyTypeDef GetWeightedBodyTypeFor(Pawn pawn, BodyTypeDef original)
         {
-            var bodyTypes = AdultBodyTypes;
+            var settings = CustomizerMod.Settings;
+            List<Pair<BodyTypeDef, float>> dist;
+            
+            if (settings.useGenderConfig)
+            {
+                dist = (pawn.gender == Gender.Female) ? settings.bodyTypeDistFemale : settings.bodyTypeDistMale;
+            }
+            else
+            {
+                dist = settings.bodyTypeDist;
+            }
+
+            if (dist == null || dist.Count == 0) return original;
+
             float totalWeight = 0f;
+            int count = dist.Count;
 
-            // Pass 1: Sum the weights of candidates with zero memory allocation
-            // 第一遍扫描：计算所有候选体型的权重总和，零内存分配
-            for (int i = 0; i < bodyTypes.Count; i++)
+            // Pass 1: Sum the weights considering the original preference
+            for (int i = 0; i < count; i++)
             {
-                var bodyType = bodyTypes[i];
-                if (bodyType == null) continue;
-                totalWeight += GetPawnBodyTypeWeight(bodyType, pawn, original);
+                var pair = dist[i];
+                totalWeight += GetFinalBodyTypeWeight(pair.First, pair.Second, pawn, original);
             }
 
-            if (totalWeight <= 0f)
-            {
-                return original; // Fallback to original if everything has 0 weight
-            }
+            if (totalWeight <= 0f) return original;
 
-            // Pass 2: Weighted random selection with zero memory allocation
-            // 第二遍扫描：加权随机抽取，零内存分配
+            // Pass 2: Selection
             float rand = Rand.Value * totalWeight;
             float currentSum = 0f;
-            for (int i = 0; i < bodyTypes.Count; i++)
+            for (int i = 0; i < count; i++)
             {
-                var bodyType = bodyTypes[i];
-                if (bodyType == null) continue;
-                float w = GetPawnBodyTypeWeight(bodyType, pawn, original);
+                var pair = dist[i];
+                float w = GetFinalBodyTypeWeight(pair.First, pair.Second, pawn, original);
                 if (w > 0f)
                 {
                     currentSum += w;
-                    if (rand <= currentSum)
-                    {
-                        return bodyType;
-                    }
+                    if (rand <= currentSum) return pair.First;
                 }
             }
             return original;
         }
 
-        private static float GetPawnBodyTypeWeight(BodyTypeDef bodyType, Pawn pawn, BodyTypeDef original)
+        private static float GetFinalBodyTypeWeight(BodyTypeDef bodyType, float userMultiplier, Pawn pawn, BodyTypeDef original)
         {
-            if (pawn == null || bodyType == null || CustomizerMod.Settings.IsDisabled(bodyType, pawn.gender))
-            {
-                return 0f;
-            }
+            if (userMultiplier <= 0f) return 0f;
 
-            // Base preference: highly prefer the body type originally chosen by the game (respects traits/gender)
-            // 基础概率：极大偏好游戏原本选出的体型（尊重背景特征/性别等）
-            float baseWeight = 0.1f;
-            if (bodyType == original)
-            {
-                baseWeight = 1.0f;
-            }
-            else if (pawn.gender == Gender.Female && bodyType == BodyTypeDefOf.Male)
-            {
-                baseWeight = 0.0f; // Female pawns should never spawn with Male body type
-            }
-            else if (pawn.gender == Gender.Male && bodyType == BodyTypeDefOf.Female)
-            {
-                baseWeight = 0.0f; // Male pawns should never spawn with Female body type
-            }
+            // Base preference
+            float baseWeight = (bodyType == original) ? 1.0f : 0.1f;
+            
+            // Gender safety
+            if (pawn.gender == Gender.Female && bodyType == BodyTypeDefOf.Male) return 0f;
+            if (pawn.gender == Gender.Male && bodyType == BodyTypeDefOf.Female) return 0f;
 
-            float userMultiplier = CustomizerMod.Settings.GetWeight(bodyType, pawn.gender);
             return baseWeight * userMultiplier;
         }
     }
@@ -240,9 +231,7 @@ namespace NPCStyleLimiter
         public static void Postfix(ThingStuffPair __instance, ref float __result)
         {
             Pawn pawn = Patch_PawnApparelGenerator_GenerateStartingApparelFor.CurrentPawn;
-            // CurrentPawn != null already implies apparel generation is in progress,
-            // which saves an extra ThreadLocal lookup on PawnGenerationState.IsGenerating.
-            if (pawn != null && __result > 0f)
+            if (pawn != null && __result > 0f && PawnGenerationState.IsGeneratingNPC)
             {
                 if (__instance.thing != null)
                 {
@@ -261,7 +250,7 @@ namespace NPCStyleLimiter
         [HarmonyPostfix]
         public static void Postfix(ThingStuffPair pair, Pawn pawn, ref bool __result)
         {
-            if (__result && PawnGenerationState.IsGenerating)
+            if (__result && PawnGenerationState.IsGeneratingNPC)
             {
                 if (pawn != null && pair.thing != null)
                 {

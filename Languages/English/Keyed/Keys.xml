@@ -8,7 +8,8 @@
   <NPCStyleLimiter_AllMods>All Mods</NPCStyleLimiter_AllMods>
   <NPCStyleLimiter_AllowAll>Allow All</NPCStyleLimiter_AllowAll>
   <NPCStyleLimiter_DisallowAll>Disallow All</NPCStyleLimiter_DisallowAll>
-  <NPCStyleLimiter_SaveChanges>Save Changes</NPCStyleLimiter_SaveChanges>
+  <NPCStyleLimiter_SaveProfile>Save Profile</NPCStyleLimiter_SaveProfile>
+  <NPCStyleLimiter_LoadManageProfiles>Load/Manage</NPCStyleLimiter_LoadManageProfiles>
   <NPCStyleLimiter_SettingsSaved>NPC Style Limiter settings saved.</NPCStyleLimiter_SettingsSaved>
   <NPCStyleLimiter_UseGenderConfig>Configure by Gender</NPCStyleLimiter_UseGenderConfig>
   <NPCStyleLimiter_Male>Male</NPCStyleLimiter_Male>
@@ -38,4 +39,6 @@
   <NPCStyleLimiter_CannotDeleteActive>Cannot delete the active profile.</NPCStyleLimiter_CannotDeleteActive>
   <NPCStyleLimiter_ProfileNameEmpty>Profile name cannot be empty.</NPCStyleLimiter_ProfileNameEmpty>
   <NPCStyleLimiter_NoProfilesFound>No saved profiles.</NPCStyleLimiter_NoProfilesFound>
+  <NPCStyleLimiter_ReadOnly>Read Only</NPCStyleLimiter_ReadOnly>
+  <NPCStyleLimiter_ConfirmOverwrite>Profile "{0}" already exists. Overwrite?</NPCStyleLimiter_ConfirmOverwrite>
 </LanguageData>

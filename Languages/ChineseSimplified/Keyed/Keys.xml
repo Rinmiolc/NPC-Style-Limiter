@@ -8,7 +8,8 @@
   <NPCStyleLimiter_AllMods>全部 Mod</NPCStyleLimiter_AllMods>
   <NPCStyleLimiter_AllowAll>允许全部</NPCStyleLimiter_AllowAll>
   <NPCStyleLimiter_DisallowAll>禁用全部</NPCStyleLimiter_DisallowAll>
-  <NPCStyleLimiter_SaveChanges>保存修改</NPCStyleLimiter_SaveChanges>
+  <NPCStyleLimiter_SaveProfile>保存预设</NPCStyleLimiter_SaveProfile>
+  <NPCStyleLimiter_LoadManageProfiles>加载/管理</NPCStyleLimiter_LoadManageProfiles>
   <NPCStyleLimiter_SettingsSaved>NPC 样式限制器设置已保存。</NPCStyleLimiter_SettingsSaved>
   <NPCStyleLimiter_UseGenderConfig>分性别配置</NPCStyleLimiter_UseGenderConfig>
   <NPCStyleLimiter_Male>男性</NPCStyleLimiter_Male>
@@ -17,8 +18,8 @@
   <NPCStyleLimiter_MaleRatioLabel>男:{0} / 女:{1}</NPCStyleLimiter_MaleRatioLabel>
   <NPCStyleLimiter_Apparel>服装列表</NPCStyleLimiter_Apparel>
   <NPCStyleLimiter_BodyTypes>体型列表</NPCStyleLimiter_BodyTypes>
-  <NPCStyleLimiter_RestoreDefaults>恢复默认设置</NPCStyleLimiter_RestoreDefaults>
-  <NPCStyleLimiter_DefaultsRestored>设置已恢复默认。</NPCStyleLimiter_DefaultsRestored>
+  <NPCStyleLimiter_RestoreDefaults>恢复默认预设</NPCStyleLimiter_RestoreDefaults>
+  <NPCStyleLimiter_DefaultsRestored>设置已恢复到默认预设。</NPCStyleLimiter_DefaultsRestored>
   <NPCStyleLimiter_NoResultsFound>没有找到匹配的选项。</NPCStyleLimiter_NoResultsFound>
   <NPCStyleLimiter_ManageProfiles>预设管理</NPCStyleLimiter_ManageProfiles>
   <NPCStyleLimiter_ProfileManager>预设管理</NPCStyleLimiter_ProfileManager>
@@ -38,4 +39,6 @@
   <NPCStyleLimiter_CannotDeleteActive>无法删除当前活跃预设。</NPCStyleLimiter_CannotDeleteActive>
   <NPCStyleLimiter_ProfileNameEmpty>预设名称不能为空。</NPCStyleLimiter_ProfileNameEmpty>
   <NPCStyleLimiter_NoProfilesFound>没有已保存的预设。</NPCStyleLimiter_NoProfilesFound>
+  <NPCStyleLimiter_ReadOnly>只读</NPCStyleLimiter_ReadOnly>
+  <NPCStyleLimiter_ConfirmOverwrite>预设「{0}」已存在，是否覆盖？</NPCStyleLimiter_ConfirmOverwrite>
 </LanguageData>

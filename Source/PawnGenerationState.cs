@@ -4,6 +4,7 @@
 
 using System;
 using System.Threading;
+using RimWorld;
 
 namespace NPCStyleLimiter
 {
@@ -12,16 +13,28 @@ namespace NPCStyleLimiter
         [ThreadStatic]
         private static int generationDepth;
 
-        public static bool IsGenerating => generationDepth > 0;
+        [ThreadStatic]
+        private static PawnGenerationContext currentContext;
 
-        public static void Enter()
+        public static bool IsGenerating => generationDepth > 0;
+        
+        // Only target non-player pawns or all if specified. 
+        // Typically "NPC Style Limiter" should target NonPlayer context.
+        public static bool IsGeneratingNPC => IsGenerating && currentContext == PawnGenerationContext.NonPlayer;
+
+        public static void Enter(PawnGenerationContext context)
         {
             generationDepth++;
+            currentContext = context;
         }
 
         public static void Exit()
         {
             generationDepth = Math.Max(0, generationDepth - 1);
+            if (generationDepth == 0)
+            {
+                currentContext = PawnGenerationContext.All; // Reset
+            }
         }
     }
 }
