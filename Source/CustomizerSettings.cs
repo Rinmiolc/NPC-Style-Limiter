@@ -16,6 +16,7 @@ namespace NPCStyleLimiter
     {
         public bool useGenderConfig = false;
         public bool adjustGenderRatio = false;
+        public bool applyToPlayerPawns = false;
         public float maleRatio = 0.5f;
         public bool debugMode = false;
         public string currentProfileName = "Default";
@@ -69,6 +70,7 @@ namespace NPCStyleLimiter
             base.ExposeData();
             Scribe_Values.Look(ref useGenderConfig, "useGenderConfig", false);
             Scribe_Values.Look(ref adjustGenderRatio, "adjustGenderRatio", false);
+            Scribe_Values.Look(ref applyToPlayerPawns, "applyToPlayerPawns", false);
             Scribe_Values.Look(ref maleRatio, "maleRatio", 0.5f);
             Scribe_Values.Look(ref debugMode, "debugMode", false);
 
@@ -134,8 +136,8 @@ namespace NPCStyleLimiter
         public void ResolveRuntimeWeights()
         {
             bool migrated = MigrateLegacyKeys(weights) || MigrateLegacyKeys(weightsMale) || MigrateLegacyKeys(weightsFemale);
-            if (migrated) Write();
-
+            // Removed Write() call here as it triggers Scribe errors during mod initialization
+            
             runtimeWeights.Clear(); runtimeWeightsMale.Clear(); runtimeWeightsFemale.Clear();
             ResolveDictionary(weights, runtimeWeights);
             ResolveDictionary(weightsMale, runtimeWeightsMale);
@@ -209,7 +211,7 @@ namespace NPCStyleLimiter
 
         private void ResetState()
         {
-            useGenderConfig = false; adjustGenderRatio = false; maleRatio = 0.5f;
+            useGenderConfig = false; adjustGenderRatio = false; applyToPlayerPawns = false; maleRatio = 0.5f;
             weights.Clear(); weightsMale.Clear(); weightsFemale.Clear();
             runtimeWeights.Clear(); runtimeWeightsMale.Clear(); runtimeWeightsFemale.Clear();
             for (int i = 0; i < 262144; i++) { fastWeights[i] = 1f; fastWeightsMale[i] = 1f; fastWeightsFemale[i] = 1f; }
@@ -282,6 +284,7 @@ namespace NPCStyleLimiter
                     new XElement("version", "1"),
                     new XElement("useGenderConfig", useGenderConfig),
                     new XElement("adjustGenderRatio", adjustGenderRatio),
+                    new XElement("applyToPlayerPawns", applyToPlayerPawns),
                     new XElement("maleRatio", maleRatio),
                     new XElement("debugMode", debugMode),
                     new XElement("weights", weights.Select(kv => new XElement("entry", new XAttribute("key", kv.Key), new XAttribute("value", kv.Value)))),
@@ -306,6 +309,7 @@ namespace NPCStyleLimiter
                 if (root == null) return false;
                 useGenderConfig = (bool?)root.Element("useGenderConfig") ?? false;
                 adjustGenderRatio = (bool?)root.Element("adjustGenderRatio") ?? false;
+                applyToPlayerPawns = (bool?)root.Element("applyToPlayerPawns") ?? false;
                 maleRatio = (float?)root.Element("maleRatio") ?? 0.5f;
                 debugMode = (bool?)root.Element("debugMode") ?? false;
                 weights = ReadWeightDict(root.Element("weights"));

@@ -158,6 +158,13 @@ namespace NPCStyleLimiter
             if (adjRatio != Settings.adjustGenderRatio) Settings.adjustGenderRatio = adjRatio;
             curX += 160f;
 
+            // Apply to Player Pawns Toggle
+            Rect applyPlayerRect = new Rect(curX, curY, 180f, 24f);
+            bool applyPlayer = Settings.applyToPlayerPawns;
+            Widgets.CheckboxLabeled(applyPlayerRect, "NPCStyleLimiter_ApplyToPlayerPawns".Translate(), ref applyPlayer);
+            if (applyPlayer != Settings.applyToPlayerPawns) Settings.applyToPlayerPawns = applyPlayer;
+            curX += 190f;
+
             // Debug Mode Toggle
             Rect debugRect = new Rect(curX, curY, 100f, 24f);
             Widgets.CheckboxLabeled(debugRect, "DEBUG", ref Settings.debugMode);

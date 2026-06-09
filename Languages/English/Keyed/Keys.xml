@@ -15,6 +15,7 @@
   <NPCStyleLimiter_Male>Male</NPCStyleLimiter_Male>
   <NPCStyleLimiter_Female>Female</NPCStyleLimiter_Female>
   <NPCStyleLimiter_AdjustGenderRatio>Adjust Gender Ratio</NPCStyleLimiter_AdjustGenderRatio>
+  <NPCStyleLimiter_ApplyToPlayerPawns>Apply to Player Pawns</NPCStyleLimiter_ApplyToPlayerPawns>
   <NPCStyleLimiter_MaleRatioLabel>M:{0} / F:{1}</NPCStyleLimiter_MaleRatioLabel>
   <NPCStyleLimiter_Apparel>Apparel</NPCStyleLimiter_Apparel>
   <NPCStyleLimiter_BodyTypes>Body Types</NPCStyleLimiter_BodyTypes>

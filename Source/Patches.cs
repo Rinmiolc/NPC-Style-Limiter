@@ -22,7 +22,7 @@ namespace NPCStyleLimiter
 
             // Adjust gender ratio if enabled and request does not dictate a fixed gender (only for humanlikes to avoid breaking animals/mechanoids)
             // 若启用了自定义男女比例，且当前请求未固定性别，则重新分配性别（仅针对人类，避免干扰动物和机械族）
-            if (PawnGenerationState.IsGeneratingNPC && CustomizerMod.Settings.adjustGenderRatio && !request.FixedGender.HasValue &&
+            if (PawnGenerationState.IsTargetGeneration && CustomizerMod.Settings != null && CustomizerMod.Settings.adjustGenderRatio && !request.FixedGender.HasValue &&
                 request.KindDef?.RaceProps != null && request.KindDef.RaceProps.Humanlike)
             {
                 // Do not override if the specific PawnKindDef has a fixed gender requirement
@@ -52,11 +52,11 @@ namespace NPCStyleLimiter
         [HarmonyPostfix]
         public static void Postfix(Pawn pawn, StyleItemDef styleItemDef, ref bool __result)
         {
-            if (__result && PawnGenerationState.IsGeneratingNPC)
+            if (__result && PawnGenerationState.IsTargetGeneration)
             {
                 // Defensive null checks
                 // 防御性空值检查
-                if (styleItemDef == null || pawn == null) return;
+                if (styleItemDef == null || pawn == null || CustomizerMod.Settings == null) return;
 
                 // Never restrict Bald or NoBeard (safe fallbacks)
                 // 绝不限制光头（Bald）或无胡须（NoBeard）（作为安全的后备选项）
@@ -78,7 +78,7 @@ namespace NPCStyleLimiter
         [HarmonyPostfix]
         public static void Postfix(StyleItemDef styleItem, Pawn pawn, ref float __result)
         {
-            if (PawnGenerationState.IsGeneratingNPC && __result > 0f && styleItem != null && pawn != null)
+            if (PawnGenerationState.IsTargetGeneration && __result > 0f && styleItem != null && pawn != null && CustomizerMod.Settings != null)
             {
                 float w = CustomizerMod.Settings.GetWeight(styleItem, pawn.gender);
                 __result *= w;
@@ -125,7 +125,7 @@ namespace NPCStyleLimiter
         [HarmonyPostfix]
         public static void Postfix(Pawn pawn, ref BodyTypeDef __result)
         {
-            if (PawnGenerationState.IsGeneratingNPC && __result != null && pawn != null)
+            if (PawnGenerationState.IsTargetGeneration && __result != null && pawn != null && CustomizerMod.Settings != null)
             {
                 // Expanded compatibility for HAR and other humanlikes
                 // 扩大对 HAR 及其他类人种族的兼容性
@@ -143,6 +143,8 @@ namespace NPCStyleLimiter
         private static BodyTypeDef GetWeightedBodyTypeFor(Pawn pawn, BodyTypeDef original)
         {
             var settings = CustomizerMod.Settings;
+            if (settings == null) return original;
+            
             List<Pair<BodyTypeDef, float>> dist;
             
             if (settings.useGenderConfig)
@@ -231,7 +233,7 @@ namespace NPCStyleLimiter
         public static void Postfix(ThingStuffPair __instance, ref float __result)
         {
             Pawn pawn = Patch_PawnApparelGenerator_GenerateStartingApparelFor.CurrentPawn;
-            if (pawn != null && __result > 0f && PawnGenerationState.IsGeneratingNPC)
+            if (pawn != null && __result > 0f && PawnGenerationState.IsTargetGeneration && CustomizerMod.Settings != null)
             {
                 if (__instance.thing != null)
                 {
@@ -250,7 +252,7 @@ namespace NPCStyleLimiter
         [HarmonyPostfix]
         public static void Postfix(ThingStuffPair pair, Pawn pawn, ref bool __result)
         {
-            if (__result && PawnGenerationState.IsGeneratingNPC)
+            if (__result && PawnGenerationState.IsTargetGeneration && CustomizerMod.Settings != null)
             {
                 if (pawn != null && pair.thing != null)
                 {

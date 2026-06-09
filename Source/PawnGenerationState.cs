@@ -18,9 +18,17 @@ namespace NPCStyleLimiter
 
         public static bool IsGenerating => generationDepth > 0;
         
-        // Only target non-player pawns or all if specified. 
-        // Typically "NPC Style Limiter" should target NonPlayer context.
         public static bool IsGeneratingNPC => IsGenerating && currentContext == PawnGenerationContext.NonPlayer;
+
+        public static bool IsTargetGeneration
+        {
+            get
+            {
+                if (!IsGenerating) return false;
+                if (CustomizerMod.Settings != null && CustomizerMod.Settings.applyToPlayerPawns) return true;
+                return currentContext == PawnGenerationContext.NonPlayer;
+            }
+        }
 
         public static void Enter(PawnGenerationContext context)
         {

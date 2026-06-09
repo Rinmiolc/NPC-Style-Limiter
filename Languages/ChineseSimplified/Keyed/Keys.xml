@@ -15,6 +15,7 @@
   <NPCStyleLimiter_Male>男性</NPCStyleLimiter_Male>
   <NPCStyleLimiter_Female>女性</NPCStyleLimiter_Female>
   <NPCStyleLimiter_AdjustGenderRatio>自定义男女比例</NPCStyleLimiter_AdjustGenderRatio>
+  <NPCStyleLimiter_ApplyToPlayerPawns>对玩家小人生效</NPCStyleLimiter_ApplyToPlayerPawns>
   <NPCStyleLimiter_MaleRatioLabel>男:{0} / 女:{1}</NPCStyleLimiter_MaleRatioLabel>
   <NPCStyleLimiter_Apparel>服装列表</NPCStyleLimiter_Apparel>
   <NPCStyleLimiter_BodyTypes>体型列表</NPCStyleLimiter_BodyTypes>
