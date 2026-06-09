@@ -52,11 +52,10 @@ namespace NPCStyleLimiter
         [HarmonyPostfix]
         public static void Postfix(Pawn pawn, StyleItemDef styleItemDef, ref bool __result)
         {
-            if (__result && PawnGenerationState.IsTargetGeneration)
+            if (__result && PawnGenerationState.IsTargetGeneration && pawn != null && pawn.RaceProps.Humanlike)
             {
                 // Defensive null checks
-                // 防御性空值检查
-                if (styleItemDef == null || pawn == null || CustomizerMod.Settings == null) return;
+                if (styleItemDef == null || CustomizerMod.Settings == null) return;
 
                 // Never restrict Bald or NoBeard (safe fallbacks)
                 // 绝不限制光头（Bald）或无胡须（NoBeard）（作为安全的后备选项）

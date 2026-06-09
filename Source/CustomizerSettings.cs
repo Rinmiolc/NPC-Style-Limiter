@@ -30,9 +30,10 @@ namespace NPCStyleLimiter
         public readonly Dictionary<Def, float> runtimeWeightsFemale = new Dictionary<Def, float>();
 
         // Fast O(1) lookup arrays indexed by custom index mapped from def type and def.index
-        private readonly float[] fastWeights = new float[262144];
-        private readonly float[] fastWeightsMale = new float[262144];
-        private readonly float[] fastWeightsFemale = new float[262144];
+        private const int MaxFastIndex = 524288;
+        private readonly float[] fastWeights = new float[MaxFastIndex];
+        private readonly float[] fastWeightsMale = new float[MaxFastIndex];
+        private readonly float[] fastWeightsFemale = new float[MaxFastIndex];
 
         public static int GetFastIndex(Def def)
         {
@@ -41,14 +42,16 @@ namespace NPCStyleLimiter
             if (def is HairDef) typeOffset = 0;
             else if (def is BeardDef) typeOffset = 16384;      // Up to 16k hairs
             else if (def is BodyTypeDef) typeOffset = 32768;    // Up to 16k body types
-            else if (def is ThingDef) typeOffset = 49152;       // Up to 200k+ things
+            else if (def is ThingDef) typeOffset = 49152;       // Up to 475k+ things
             
-            return typeOffset + def.index;
+            int idx = typeOffset + def.index;
+            if (idx >= MaxFastIndex) return 0; // Guard against overflow
+            return idx;
         }
 
         public CustomizerSettings()
         {
-            for (int i = 0; i < 262144; i++)
+            for (int i = 0; i < MaxFastIndex; i++)
             {
                 fastWeights[i] = 1f;
                 fastWeightsMale[i] = 1f;
@@ -138,7 +141,7 @@ namespace NPCStyleLimiter
             ResolveDictionary(weightsMale, runtimeWeightsMale);
             ResolveDictionary(weightsFemale, runtimeWeightsFemale);
 
-            for (int i = 0; i < 262144; i++) { fastWeights[i] = 1f; fastWeightsMale[i] = 1f; fastWeightsFemale[i] = 1f; }
+            for (int i = 0; i < MaxFastIndex; i++) { fastWeights[i] = 1f; fastWeightsMale[i] = 1f; fastWeightsFemale[i] = 1f; }
             foreach (var kvp in runtimeWeights) if (kvp.Key != null) fastWeights[GetFastIndex(kvp.Key)] = kvp.Value;
             foreach (var kvp in runtimeWeightsMale) if (kvp.Key != null) fastWeightsMale[GetFastIndex(kvp.Key)] = kvp.Value;
             foreach (var kvp in runtimeWeightsFemale) if (kvp.Key != null) fastWeightsFemale[GetFastIndex(kvp.Key)] = kvp.Value;
@@ -195,7 +198,7 @@ namespace NPCStyleLimiter
             useGenderConfig = false; adjustGenderRatio = false; applyToPlayerPawns = false; maleRatio = 0.5f;
             weights.Clear(); weightsMale.Clear(); weightsFemale.Clear();
             runtimeWeights.Clear(); runtimeWeightsMale.Clear(); runtimeWeightsFemale.Clear();
-            for (int i = 0; i < 262144; i++) { fastWeights[i] = 1f; fastWeightsMale[i] = 1f; fastWeightsFemale[i] = 1f; }
+            for (int i = 0; i < MaxFastIndex; i++) { fastWeights[i] = 1f; fastWeightsMale[i] = 1f; fastWeightsFemale[i] = 1f; }
         }
 
         public float GetWeight(Def def, Gender gender)

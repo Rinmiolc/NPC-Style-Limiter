@@ -11,37 +11,43 @@ namespace NPCStyleLimiter
     public static class PawnGenerationState
     {
         [ThreadStatic]
-        private static int generationDepth;
+        private static System.Collections.Generic.List<PawnGenerationContext> contextStack;
 
-        [ThreadStatic]
-        private static PawnGenerationContext currentContext;
+        private static System.Collections.Generic.List<PawnGenerationContext> ContextStack
+        {
+            get
+            {
+                if (contextStack == null) contextStack = new System.Collections.Generic.List<PawnGenerationContext>();
+                return contextStack;
+            }
+        }
 
-        public static bool IsGenerating => generationDepth > 0;
+        public static bool IsGenerating => ContextStack.Count > 0;
         
-        public static bool IsGeneratingNPC => IsGenerating && currentContext == PawnGenerationContext.NonPlayer;
+        public static bool IsGeneratingNPC => IsGenerating && CurrentContext == PawnGenerationContext.NonPlayer;
+
+        public static PawnGenerationContext CurrentContext => ContextStack.Count > 0 ? ContextStack[ContextStack.Count - 1] : PawnGenerationContext.All;
 
         public static bool IsTargetGeneration
         {
             get
             {
-                if (!IsGenerating) return false;
+                if (ContextStack.Count == 0) return false;
                 if (CustomizerMod.Settings != null && CustomizerMod.Settings.applyToPlayerPawns) return true;
-                return currentContext == PawnGenerationContext.NonPlayer;
+                return CurrentContext == PawnGenerationContext.NonPlayer;
             }
         }
 
         public static void Enter(PawnGenerationContext context)
         {
-            generationDepth++;
-            currentContext = context;
+            ContextStack.Add(context);
         }
 
         public static void Exit()
         {
-            generationDepth = Math.Max(0, generationDepth - 1);
-            if (generationDepth == 0)
+            if (ContextStack.Count > 0)
             {
-                currentContext = PawnGenerationContext.All; // Reset
+                ContextStack.RemoveAt(ContextStack.Count - 1);
             }
         }
     }
