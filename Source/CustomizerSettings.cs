@@ -29,11 +29,6 @@ namespace NPCStyleLimiter
         public readonly Dictionary<Def, float> runtimeWeightsMale = new Dictionary<Def, float>();
         public readonly Dictionary<Def, float> runtimeWeightsFemale = new Dictionary<Def, float>();
 
-        // Pre-calculated body type distribution for faster selection
-        public List<Pair<BodyTypeDef, float>> bodyTypeDist = new List<Pair<BodyTypeDef, float>>();
-        public List<Pair<BodyTypeDef, float>> bodyTypeDistMale = new List<Pair<BodyTypeDef, float>>();
-        public List<Pair<BodyTypeDef, float>> bodyTypeDistFemale = new List<Pair<BodyTypeDef, float>>();
-
         // Fast O(1) lookup arrays indexed by custom index mapped from def type and def.index
         private readonly float[] fastWeights = new float[262144];
         private readonly float[] fastWeightsMale = new float[262144];
@@ -147,8 +142,6 @@ namespace NPCStyleLimiter
             foreach (var kvp in runtimeWeights) if (kvp.Key != null) fastWeights[GetFastIndex(kvp.Key)] = kvp.Value;
             foreach (var kvp in runtimeWeightsMale) if (kvp.Key != null) fastWeightsMale[GetFastIndex(kvp.Key)] = kvp.Value;
             foreach (var kvp in runtimeWeightsFemale) if (kvp.Key != null) fastWeightsFemale[GetFastIndex(kvp.Key)] = kvp.Value;
-
-            RebuildBodyTypeDistributions();
         }
 
         private void ResolveDictionary(Dictionary<string, float> source, Dictionary<Def, float> target)
@@ -158,18 +151,6 @@ namespace NPCStyleLimiter
             {
                 Def def = FindDef(kvp.Key);
                 if (def != null) target[def] = kvp.Value;
-            }
-        }
-
-        private void RebuildBodyTypeDistributions()
-        {
-            bodyTypeDist.Clear(); bodyTypeDistMale.Clear(); bodyTypeDistFemale.Clear();
-            var allAdultBodyTypes = DefDatabase<BodyTypeDef>.AllDefsListForReading.Where(d => d.defName != "Baby" && d.defName != "Child").ToList();
-            foreach (var b in allAdultBodyTypes)
-            {
-                bodyTypeDist.Add(new Pair<BodyTypeDef, float>(b, GetWeight(b, Gender.None)));
-                bodyTypeDistMale.Add(new Pair<BodyTypeDef, float>(b, GetWeight(b, Gender.Male)));
-                bodyTypeDistFemale.Add(new Pair<BodyTypeDef, float>(b, GetWeight(b, Gender.Female)));
             }
         }
 

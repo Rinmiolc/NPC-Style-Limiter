@@ -1,12 +1,12 @@
-# MSBuild/Visual Studio/Rider
 Source/obj/
 Source/bin/
 .vs/
+.agent/
 .idea/
 *.user
 *.suo
 *.sln.docstates
 *.bat
-# OS files
 .DS_Store
 Thumbs.db
+GEMINI.md

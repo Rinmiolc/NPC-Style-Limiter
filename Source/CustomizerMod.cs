@@ -139,7 +139,11 @@ namespace NPCStyleLimiter
             Rect checkRect = new Rect(curX, curY, 160f, 24f);
             bool useGender = Settings.useGenderConfig;
             Widgets.CheckboxLabeled(checkRect, "NPCStyleLimiter_UseGenderConfig".Translate(), ref useGender);
-            if (useGender != Settings.useGenderConfig) Settings.useGenderConfig = useGender;
+            if (useGender != Settings.useGenderConfig) 
+            {
+                Settings.useGenderConfig = useGender;
+                Settings.ResolveRuntimeWeights();
+            }
             curX += 170f;
 
             if (Settings.useGenderConfig)

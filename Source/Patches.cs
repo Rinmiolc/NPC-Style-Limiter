@@ -145,27 +145,18 @@ namespace NPCStyleLimiter
             var settings = CustomizerMod.Settings;
             if (settings == null) return original;
             
-            List<Pair<BodyTypeDef, float>> dist;
-            
-            if (settings.useGenderConfig)
-            {
-                dist = (pawn.gender == Gender.Female) ? settings.bodyTypeDistFemale : settings.bodyTypeDistMale;
-            }
-            else
-            {
-                dist = settings.bodyTypeDist;
-            }
-
-            if (dist == null || dist.Count == 0) return original;
+            var bodyTypes = AdultBodyTypes;
+            if (bodyTypes == null || bodyTypes.Count == 0) return original;
 
             float totalWeight = 0f;
-            int count = dist.Count;
+            int count = bodyTypes.Count;
 
             // Pass 1: Sum the weights considering the original preference
             for (int i = 0; i < count; i++)
             {
-                var pair = dist[i];
-                totalWeight += GetFinalBodyTypeWeight(pair.First, pair.Second, pawn, original);
+                var bodyType = bodyTypes[i];
+                float userWeight = settings.GetWeight(bodyType, pawn.gender);
+                totalWeight += GetFinalBodyTypeWeight(bodyType, userWeight, pawn, original);
             }
 
             if (totalWeight <= 0f) return original;
@@ -175,12 +166,13 @@ namespace NPCStyleLimiter
             float currentSum = 0f;
             for (int i = 0; i < count; i++)
             {
-                var pair = dist[i];
-                float w = GetFinalBodyTypeWeight(pair.First, pair.Second, pawn, original);
+                var bodyType = bodyTypes[i];
+                float userWeight = settings.GetWeight(bodyType, pawn.gender);
+                float w = GetFinalBodyTypeWeight(bodyType, userWeight, pawn, original);
                 if (w > 0f)
                 {
                     currentSum += w;
-                    if (rand <= currentSum) return pair.First;
+                    if (rand <= currentSum) return bodyType;
                 }
             }
             return original;
