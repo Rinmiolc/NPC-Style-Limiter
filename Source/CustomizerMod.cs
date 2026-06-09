@@ -121,12 +121,17 @@ namespace NPCStyleLimiter
             float curY = headerCard.y + 10f;
 
             // Profile Badge
-            Rect profileBadge = new Rect(headerCard.xMax - 180f, curY, 170f, 24f);
-            Text.Anchor = TextAnchor.MiddleRight;
+            string profileLabel = "NPCStyleLimiter_ProfileLabel".Translate() + ": ";
+            string profileName = Settings.currentProfileName ?? "Default";
+            float labelWidth = Text.CalcSize(profileLabel).x;
+            float nameWidth = Text.CalcSize(profileName).x;
+            
+            Rect profileBadge = new Rect(headerCard.xMax - labelWidth - nameWidth - 12f, curY, labelWidth + nameWidth, 24f);
+            Text.Anchor = TextAnchor.MiddleLeft;
             GUI.color = InactiveTextColor;
-            Widgets.Label(profileBadge, "NPCStyleLimiter_ProfileLabel".Translate() + ": ");
+            Widgets.Label(new Rect(profileBadge.x, profileBadge.y, labelWidth, 24f), profileLabel);
             GUI.color = AccentColor;
-            Widgets.Label(profileBadge, Settings.currentProfileName ?? "Default");
+            Widgets.Label(new Rect(profileBadge.x + labelWidth, profileBadge.y, nameWidth, 24f), profileName);
             GUI.color = Color.white;
             Text.Anchor = TextAnchor.UpperLeft;
 

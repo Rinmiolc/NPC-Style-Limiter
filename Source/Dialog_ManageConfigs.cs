@@ -50,15 +50,18 @@ namespace NPCStyleLimiter
             // 1. Current Status Card
             Rect statusCard = new Rect(inRect.x, curY, inRect.width, 45f);
             Widgets.DrawRectFast(statusCard, CardBgColor);
-            
+
+            string statusLabel = "NPCStyleLimiter_CurrentProfileLabel".Translate();
             string activeName = CustomizerMod.Settings.currentProfileName ?? "Default";
-            Rect statusLabelRect = new Rect(statusCard.x + 12f, statusCard.y, statusCard.width - 24f, statusCard.height);
+            float sLabelWidth = Text.CalcSize(statusLabel).x;
+
+            Rect statusContentRect = new Rect(statusCard.x + 12f, statusCard.y, statusCard.width - 24f, statusCard.height);
             Text.Anchor = TextAnchor.MiddleLeft;
             GUI.color = InactiveTextColor;
-            Widgets.Label(new Rect(statusLabelRect.x, statusLabelRect.y, 100f, statusLabelRect.height), "NPCStyleLimiter_CurrentProfileLabel".Translate());
+            Widgets.Label(new Rect(statusContentRect.x, statusContentRect.y, sLabelWidth, statusContentRect.height), statusLabel);
             GUI.color = AccentColor;
             Text.Font = GameFont.Small;
-            Widgets.Label(new Rect(statusLabelRect.x + 110f, statusLabelRect.y, statusLabelRect.width - 110f, statusLabelRect.height), activeName);
+            Widgets.Label(new Rect(statusContentRect.x + sLabelWidth + 8f, statusContentRect.y, statusContentRect.width - sLabelWidth - 8f, statusContentRect.height), activeName);
             Text.Anchor = TextAnchor.UpperLeft;
             GUI.color = Color.white;
 
