@@ -566,73 +566,116 @@ namespace NPCStyleLimiter
 
             // Scrollable Content
             Rect outRect = new Rect(inRect.x, bannerCard.yMax + 10f, inRect.width, inRect.height - bannerHeight - 25f);
-            Rect viewRect = new Rect(0, 0, outRect.width - 16f, 650f);
+            
+            // Calculate card heights dynamically to prevent text truncation at different resolutions/languages
+            float cardWidth = outRect.width - 16f;
+            
+            // 1. Calculate Guide Card Height
+            float guideHeaderHeight = 36f; // 10f top padding + 26f header
+            float guideBulletPadding = 6f; // spacing between bullet items
+            float guideInnerWidth = cardWidth - 36f; // 20f left padding + 16f right padding
+            
+            Text.Font = GameFont.Small;
+            float g1Height = Text.CalcHeight("NPCStyleLimiter_HomeGuide1".Translate(), guideInnerWidth - 16f);
+            float g2Height = Text.CalcHeight("NPCStyleLimiter_HomeGuide2".Translate(), guideInnerWidth - 16f);
+            float g3Height = Text.CalcHeight("NPCStyleLimiter_HomeGuide3".Translate(), guideInnerWidth - 16f);
+            float g4Height = Text.CalcHeight("NPCStyleLimiter_HomeGuide4".Translate(), guideInnerWidth - 16f);
+            float g5Height = Text.CalcHeight("NPCStyleLimiter_HomeGuide5".Translate(), guideInnerWidth - 16f);
+            
+            float guideCardHeight = guideHeaderHeight + g1Height + g2Height + g3Height + g4Height + g5Height + (guideBulletPadding * 4) + 16f; // 16f bottom padding
+            
+            // 2. Calculate Limit Card Height
+            string limitText = "NPCStyleLimiter_HomeLimitDesc".Translate();
+            float limitTextWidth = cardWidth - 36f;
+            float limitTextHeight = Text.CalcHeight(limitText, limitTextWidth);
+            float limitCardHeight = 36f + limitTextHeight + 16f; // header + text + bottom padding
+            
+            // 3. Calculate Safety Card Height
+            string safetyText = "NPCStyleLimiter_HomeSafetyDesc".Translate();
+            float safetyTextWidth = cardWidth - 36f;
+            float safetyTextHeight = Text.CalcHeight(safetyText, safetyTextWidth);
+            float safetyCardHeight = 36f + safetyTextHeight + 16f;
+            
+            // 4. Calculate Alien Card Height
+            string alienText = "NPCStyleLimiter_HomeAlienDesc".Translate();
+            float alienTextWidth = cardWidth - 36f;
+            float alienTextHeight = Text.CalcHeight(alienText, alienTextWidth);
+            float alienCardHeight = 36f + alienTextHeight + 16f;
+            
+            // Total height of the scroll content
+            float spaceBetweenCards = 12f;
+            float totalHeight = guideCardHeight + spaceBetweenCards 
+                                + limitCardHeight + spaceBetweenCards 
+                                + safetyCardHeight + spaceBetweenCards 
+                                + alienCardHeight + 35f; // extra space for footer copyright
+            
+            Rect viewRect = new Rect(0, 0, cardWidth, totalHeight);
             Widgets.BeginScrollView(outRect, ref homeScrollPos, viewRect);
 
             float curY = 0f;
 
             // Section 1: Guide
-            Rect guideCard = new Rect(0, curY, viewRect.width, 175f);
+            Rect guideCard = new Rect(0, curY, cardWidth, guideCardHeight);
             Widgets.DrawRectFast(guideCard, PanelBgColor);
             Widgets.DrawRectFast(new Rect(guideCard.x, guideCard.y, 3f, guideCard.height), AccentColor);
             DrawSectionHeader(guideCard.x + 16f, guideCard.y + 10f, "NPCStyleLimiter_HomeGuideTitle".Translate(), AccentColor);
             
             float textY = guideCard.y + 36f;
-            DrawBulletPoint(guideCard.x + 20f, textY, "NPCStyleLimiter_HomeGuide1".Translate()); textY += 24f;
-            DrawBulletPoint(guideCard.x + 20f, textY, "NPCStyleLimiter_HomeGuide2".Translate()); textY += 24f;
-            DrawBulletPoint(guideCard.x + 20f, textY, "NPCStyleLimiter_HomeGuide3".Translate()); textY += 24f;
-            DrawBulletPoint(guideCard.x + 20f, textY, "NPCStyleLimiter_HomeGuide4".Translate()); textY += 24f;
-            DrawBulletPoint(guideCard.x + 20f, textY, "NPCStyleLimiter_HomeGuide5".Translate());
+            textY += DrawBulletPoint(guideCard.x + 20f, textY, guideInnerWidth, "NPCStyleLimiter_HomeGuide1".Translate()) + guideBulletPadding;
+            textY += DrawBulletPoint(guideCard.x + 20f, textY, guideInnerWidth, "NPCStyleLimiter_HomeGuide2".Translate()) + guideBulletPadding;
+            textY += DrawBulletPoint(guideCard.x + 20f, textY, guideInnerWidth, "NPCStyleLimiter_HomeGuide3".Translate()) + guideBulletPadding;
+            textY += DrawBulletPoint(guideCard.x + 20f, textY, guideInnerWidth, "NPCStyleLimiter_HomeGuide4".Translate()) + guideBulletPadding;
+            DrawBulletPoint(guideCard.x + 20f, textY, guideInnerWidth, "NPCStyleLimiter_HomeGuide5".Translate());
             
-            curY += 187f;
+            curY += guideCardHeight + spaceBetweenCards;
 
             // Section 2: Limitations (Zero-Weight)
-            Rect limitCard = new Rect(0, curY, viewRect.width, 135f);
+            Rect limitCard = new Rect(0, curY, cardWidth, limitCardHeight);
             Widgets.DrawRectFast(limitCard, PanelBgColor);
             Color orangeRed = new Color(0.88f, 0.35f, 0.15f);
             Widgets.DrawRectFast(new Rect(limitCard.x, limitCard.y, 3f, limitCard.height), orangeRed);
             DrawSectionHeader(limitCard.x + 16f, limitCard.y + 10f, "⚠️ " + "NPCStyleLimiter_HomeLimitTitle".Translate(), orangeRed);
             
             float limitTextY = limitCard.y + 36f;
-            Rect limitTextRect = new Rect(limitCard.x + 20f, limitTextY, limitCard.width - 32f, 85f);
+            Rect limitTextRect = new Rect(limitCard.x + 20f, limitTextY, limitTextWidth, limitTextHeight);
             Text.Font = GameFont.Small;
             GUI.color = new Color(0.9f, 0.85f, 0.75f);
-            Widgets.Label(limitTextRect, "NPCStyleLimiter_HomeLimitDesc".Translate());
+            Widgets.Label(limitTextRect, limitText);
             GUI.color = Color.white;
 
-            curY += 147f;
+            curY += limitCardHeight + spaceBetweenCards;
 
             // Section 3: Safety valve
-            Rect safetyCard = new Rect(0, curY, viewRect.width, 135f);
+            Rect safetyCard = new Rect(0, curY, cardWidth, safetyCardHeight);
             Widgets.DrawRectFast(safetyCard, PanelBgColor);
             Color softGreen = new Color(0.2f, 0.7f, 0.35f);
             Widgets.DrawRectFast(new Rect(safetyCard.x, safetyCard.y, 3f, safetyCard.height), softGreen);
             DrawSectionHeader(safetyCard.x + 16f, safetyCard.y + 10f, "🛡️ " + "NPCStyleLimiter_HomeSafetyTitle".Translate(), softGreen);
 
             float safetyTextY = safetyCard.y + 36f;
-            Rect safetyTextRect = new Rect(safetyCard.x + 20f, safetyTextY, safetyCard.width - 32f, 85f);
+            Rect safetyTextRect = new Rect(safetyCard.x + 20f, safetyTextY, safetyTextWidth, safetyTextHeight);
             GUI.color = new Color(0.8f, 0.9f, 0.8f);
-            Widgets.Label(safetyTextRect, "NPCStyleLimiter_HomeSafetyDesc".Translate());
+            Widgets.Label(safetyTextRect, safetyText);
             GUI.color = Color.white;
 
-            curY += 147f;
+            curY += safetyCardHeight + spaceBetweenCards;
 
             // Section 4: Alien Spawning limitations
-            Rect alienCard = new Rect(0, curY, viewRect.width, 135f);
+            Rect alienCard = new Rect(0, curY, cardWidth, alienCardHeight);
             Widgets.DrawRectFast(alienCard, PanelBgColor);
             Color softPurple = new Color(0.7f, 0.45f, 0.85f);
             Widgets.DrawRectFast(new Rect(alienCard.x, alienCard.y, 3f, alienCard.height), softPurple);
             DrawSectionHeader(alienCard.x + 16f, alienCard.y + 10f, "NPCStyleLimiter_HomeAlienTitle".Translate(), softPurple);
 
             float alienTextY = alienCard.y + 36f;
-            Rect alienTextRect = new Rect(alienCard.x + 20f, alienTextY, alienCard.width - 32f, 85f);
+            Rect alienTextRect = new Rect(alienCard.x + 20f, alienTextY, alienTextWidth, alienTextHeight);
             GUI.color = new Color(0.85f, 0.8f, 0.9f);
-            Widgets.Label(alienTextRect, "NPCStyleLimiter_HomeAlienDesc".Translate());
+            Widgets.Label(alienTextRect, alienText);
             GUI.color = Color.white;
 
             // Section 5: Footer Copyright
-            float footerY = alienCard.yMax + 18f;
-            Rect footerRect = new Rect(0, footerY, viewRect.width, 24f);
+            float footerY = alienCard.yMax + 12f;
+            Rect footerRect = new Rect(0, footerY, cardWidth, 24f);
             Text.Anchor = TextAnchor.MiddleCenter;
             Text.Font = GameFont.Tiny;
             GUI.color = InactiveTextColor;
@@ -653,12 +696,16 @@ namespace NPCStyleLimiter
             Text.Font = GameFont.Small;
         }
 
-        private void DrawBulletPoint(float x, float y, string text)
+        private float DrawBulletPoint(float x, float y, float width, string text)
         {
+            Text.Font = GameFont.Small;
+            float textWidth = width - 16f;
+            float textHeight = Text.CalcHeight(text, textWidth);
             GUI.color = AccentColor;
-            Widgets.Label(new Rect(x, y, 16f, 22f), "•");
+            Widgets.Label(new Rect(x, y, 16f, textHeight), "•");
             GUI.color = Color.white;
-            Widgets.Label(new Rect(x + 16f, y, 520f, 22f), text);
+            Widgets.Label(new Rect(x + 16f, y, textWidth, textHeight), text);
+            return textHeight;
         }
     }
 
