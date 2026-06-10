@@ -65,4 +65,6 @@
   <NPCStyleLimiter_HomeLimitDesc>重要提示：為了保證與其他模組的相容性，不破壞遊戲原本的派系與職業裝備規則，模組的所有概率調整都是基於原版設定進行倍率縮放的（原版概率 × 自定義倍率）。\n這意味著，如果某種髮型、鬍鬚或服裝在原版遊戲中對於該小人本身就無法生成（例如原版權重為 0，或者因為性別、派系限制無法穿著），即將其倍率調高至 5.0x，它也依然不會生成。</NPCStyleLimiter_HomeLimitDesc>
   <NPCStyleLimiter_HomeSafetyTitle>極端配置防崩潰保護</NPCStyleLimiter_HomeSafetyTitle>
   <NPCStyleLimiter_HomeSafetyDesc>如果您不小心將某個種族所有能穿的衣服全部禁用了（全部設為 0.0x），原版的服裝生成機制會因為找不到任何可用衣物而導致遊戲卡死或紅字報錯。\n為了避免這種情況，模組內置了防卡死安全保護。當檢測到由於玩家設置導致當前小人無衣可穿時，系統會自動臨時放行，允許其生成最基礎的原版衣物以保障遊戲正常運轉。建議您為每個種族保留至少幾件常用服裝以獲得最佳配置效果。</NPCStyleLimiter_HomeSafetyDesc>
+  <NPCStyleLimiter_HomeAlienTitle>外星人種族外觀限制說明</NPCStyleLimiter_HomeAlienTitle>
+  <NPCStyleLimiter_HomeAlienDesc>部分外星人種族（如米莉拉）的髮型可能僅顯示一個「占位髮型」。這是因為這些種族的頭髮並非遊戲標準的 Def 數據，而是直接作為基因貼圖或身體附件（Addon）渲染的 PNG 圖片。\n由於這些外觀在髮型數據庫中不存在對應的 Def 數據，且其隨機分配是由對方模組在底層獨立控制的，本模組無法對其進行安全攔截與適配。為了保障與其他模組的完美相容，建議您使用《Character Editor》（角色編輯器）等模組在遊戲內手動調整或鎖定特定外星人小人的基因與外觀。</NPCStyleLimiter_HomeAlienDesc>
 </LanguageData>

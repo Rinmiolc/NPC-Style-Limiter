@@ -566,7 +566,7 @@ namespace NPCStyleLimiter
 
             // Scrollable Content
             Rect outRect = new Rect(inRect.x, bannerCard.yMax + 10f, inRect.width, inRect.height - bannerHeight - 25f);
-            Rect viewRect = new Rect(0, 0, outRect.width - 16f, 520f);
+            Rect viewRect = new Rect(0, 0, outRect.width - 16f, 650f);
             Widgets.BeginScrollView(outRect, ref homeScrollPos, viewRect);
 
             float curY = 0f;
@@ -577,7 +577,7 @@ namespace NPCStyleLimiter
             Widgets.DrawRectFast(new Rect(guideCard.x, guideCard.y, 3f, guideCard.height), AccentColor);
             DrawSectionHeader(guideCard.x + 16f, guideCard.y + 10f, "NPCStyleLimiter_HomeGuideTitle".Translate(), AccentColor);
             
-            float textY = guideCard.y + 42f;
+            float textY = guideCard.y + 36f;
             DrawBulletPoint(guideCard.x + 20f, textY, "NPCStyleLimiter_HomeGuide1".Translate()); textY += 24f;
             DrawBulletPoint(guideCard.x + 20f, textY, "NPCStyleLimiter_HomeGuide2".Translate()); textY += 24f;
             DrawBulletPoint(guideCard.x + 20f, textY, "NPCStyleLimiter_HomeGuide3".Translate()); textY += 24f;
@@ -593,7 +593,7 @@ namespace NPCStyleLimiter
             Widgets.DrawRectFast(new Rect(limitCard.x, limitCard.y, 3f, limitCard.height), orangeRed);
             DrawSectionHeader(limitCard.x + 16f, limitCard.y + 10f, "⚠️ " + "NPCStyleLimiter_HomeLimitTitle".Translate(), orangeRed);
             
-            float limitTextY = limitCard.y + 42f;
+            float limitTextY = limitCard.y + 36f;
             Rect limitTextRect = new Rect(limitCard.x + 20f, limitTextY, limitCard.width - 32f, 85f);
             Text.Font = GameFont.Small;
             GUI.color = new Color(0.9f, 0.85f, 0.75f);
@@ -609,14 +609,29 @@ namespace NPCStyleLimiter
             Widgets.DrawRectFast(new Rect(safetyCard.x, safetyCard.y, 3f, safetyCard.height), softGreen);
             DrawSectionHeader(safetyCard.x + 16f, safetyCard.y + 10f, "🛡️ " + "NPCStyleLimiter_HomeSafetyTitle".Translate(), softGreen);
 
-            float safetyTextY = safetyCard.y + 42f;
+            float safetyTextY = safetyCard.y + 36f;
             Rect safetyTextRect = new Rect(safetyCard.x + 20f, safetyTextY, safetyCard.width - 32f, 85f);
             GUI.color = new Color(0.8f, 0.9f, 0.8f);
             Widgets.Label(safetyTextRect, "NPCStyleLimiter_HomeSafetyDesc".Translate());
             GUI.color = Color.white;
 
-            // Section 4: Footer Copyright
-            float footerY = safetyCard.yMax + 18f;
+            curY += 147f;
+
+            // Section 4: Alien Spawning limitations
+            Rect alienCard = new Rect(0, curY, viewRect.width, 135f);
+            Widgets.DrawRectFast(alienCard, PanelBgColor);
+            Color softPurple = new Color(0.7f, 0.45f, 0.85f);
+            Widgets.DrawRectFast(new Rect(alienCard.x, alienCard.y, 3f, alienCard.height), softPurple);
+            DrawSectionHeader(alienCard.x + 16f, alienCard.y + 10f, "NPCStyleLimiter_HomeAlienTitle".Translate(), softPurple);
+
+            float alienTextY = alienCard.y + 36f;
+            Rect alienTextRect = new Rect(alienCard.x + 20f, alienTextY, alienCard.width - 32f, 85f);
+            GUI.color = new Color(0.85f, 0.8f, 0.9f);
+            Widgets.Label(alienTextRect, "NPCStyleLimiter_HomeAlienDesc".Translate());
+            GUI.color = Color.white;
+
+            // Section 5: Footer Copyright
+            float footerY = alienCard.yMax + 18f;
             Rect footerRect = new Rect(0, footerY, viewRect.width, 24f);
             Text.Anchor = TextAnchor.MiddleCenter;
             Text.Font = GameFont.Tiny;
@@ -634,7 +649,6 @@ namespace NPCStyleLimiter
             Text.Font = GameFont.Medium;
             GUI.color = color;
             Widgets.Label(new Rect(x, y, 400f, 28f), title);
-            Widgets.DrawRectFast(new Rect(x, y + 25f, 40f, 2f), color);
             GUI.color = Color.white;
             Text.Font = GameFont.Small;
         }
