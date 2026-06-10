@@ -384,9 +384,18 @@ namespace NPCStyleLimiter
                 {
                     List<FloatMenuOption> opts = new List<FloatMenuOption> { new FloatMenuOption("NPCStyleLimiter_AllMods".Translate(), () => selectedModName = "All") };
                     HashSet<string> mods = new HashSet<string>();
-                    if (activeTab == 0) foreach (var hd in DefDatabase<HairDef>.AllDefsListForReading) if (hd != null) mods.Add(hd.modContentPack?.Name ?? "Core");
-                    else if (activeTab == 1) foreach (var bd in DefDatabase<BeardDef>.AllDefsListForReading) if (bd != null) mods.Add(bd.modContentPack?.Name ?? "Core");
-                    else if (activeTab == 2) foreach (var td in DefDatabase<ThingDef>.AllDefsListForReading) if (td != null && td.IsApparel) mods.Add(td.modContentPack?.Name ?? "Core");
+                    if (activeTab == 0)
+                    {
+                        foreach (var hd in DefDatabase<HairDef>.AllDefsListForReading) if (hd != null) mods.Add(hd.modContentPack?.Name ?? "Core");
+                    }
+                    else if (activeTab == 1)
+                    {
+                        foreach (var bd in DefDatabase<BeardDef>.AllDefsListForReading) if (bd != null) mods.Add(bd.modContentPack?.Name ?? "Core");
+                    }
+                    else if (activeTab == 2)
+                    {
+                        foreach (var td in DefDatabase<ThingDef>.AllDefsListForReading) if (td != null && td.IsApparel) mods.Add(td.modContentPack?.Name ?? "Core");
+                    }
                     foreach (var m in mods.OrderBy(x => x)) opts.Add(new FloatMenuOption(m, () => selectedModName = m));
                     Find.WindowStack.Add(new FloatMenu(opts));
                 }
