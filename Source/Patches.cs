@@ -20,20 +20,20 @@ namespace NPCStyleLimiter
         {
             PawnGenerationState.Enter(request.Context);
 
-            // Adjust gender ratio if enabled and request does not dictate a fixed gender (only for humanlikes to avoid breaking animals/mechanoids)
-            // 若启用了自定义男女比例，且当前请求未固定性别，则重新分配性别（仅针对人类，避免干扰动物和机械族）
-            if (PawnGenerationState.IsTargetGeneration && CustomizerMod.Settings != null && CustomizerMod.Settings.adjustGenderRatio && !request.FixedGender.HasValue &&
+            // Adjust gender ratio if enabled for this race
+            if (PawnGenerationState.IsTargetGeneration && CustomizerMod.Settings != null && !request.FixedGender.HasValue &&
                 request.KindDef?.RaceProps != null && request.KindDef.RaceProps.Humanlike)
             {
-                // Do not override if the specific PawnKindDef has a fixed gender requirement
-                // 若该具体角色类型 (PawnKindDef) 自身有硬性性别限制，则不予干预
-                if (request.KindDef.fixedGender.HasValue)
-                {
-                    return;
-                }
+                string raceDefName = request.KindDef.race?.defName;
+                var raceSettings = CustomizerMod.Settings.GetSettingsForRace(raceDefName);
 
-                Gender chosenGender = (Rand.Value < CustomizerMod.Settings.maleRatio) ? Gender.Male : Gender.Female;
-                request.FixedGender = chosenGender;
+                if (raceSettings.adjustGenderRatio)
+                {
+                    if (request.KindDef.fixedGender.HasValue) return;
+
+                    Gender chosenGender = (Rand.Value < raceSettings.maleRatio) ? Gender.Male : Gender.Female;
+                    request.FixedGender = chosenGender;
+                }
             }
         }
 
@@ -61,7 +61,7 @@ namespace NPCStyleLimiter
                 // 绝不限制光头（Bald）或无胡须（NoBeard）（作为安全的后备选项）
                 if (styleItemDef.defName == "Bald" || styleItemDef.defName == "NoBeard") return;
 
-                if (CustomizerMod.Settings.IsDisabled(styleItemDef, pawn.gender))
+                if (CustomizerMod.Settings.IsDisabled(styleItemDef, pawn.gender, pawn.def?.defName))
                 {
                     __result = false;
                 }
@@ -79,7 +79,7 @@ namespace NPCStyleLimiter
         {
             if (PawnGenerationState.IsTargetGeneration && __result > 0f && styleItem != null && pawn != null && CustomizerMod.Settings != null)
             {
-                float w = CustomizerMod.Settings.GetWeight(styleItem, pawn.gender);
+                float w = CustomizerMod.Settings.GetWeight(styleItem, pawn.gender, pawn.def?.defName);
                 __result *= w;
             }
         }
@@ -130,10 +130,20 @@ namespace NPCStyleLimiter
                 // 扩大对 HAR 及其他类人种族的兼容性
                 if (pawn.RaceProps.Humanlike && __result != BodyTypeDefOf.Baby && __result != BodyTypeDefOf.Child)
                 {
-                    BodyTypeDef customType = GetWeightedBodyTypeFor(pawn, __result);
-                    if (customType != null)
+                    string raceDefName = pawn.def?.defName;
+                    var settings = CustomizerMod.Settings;
+                    bool isHuman = pawn.def == ThingDefOf.Human;
+                    bool hasSpecificConfig = settings.raceSettings != null && 
+                                            settings.raceSettings.TryGetValue(raceDefName, out var s) && 
+                                            s.useSpecificConfig;
+
+                    if (isHuman || hasSpecificConfig)
                     {
-                        __result = customType;
+                        BodyTypeDef customType = GetWeightedBodyTypeFor(pawn, __result);
+                        if (customType != null)
+                        {
+                            __result = customType;
+                        }
                     }
                 }
             }
@@ -154,7 +164,7 @@ namespace NPCStyleLimiter
             for (int i = 0; i < count; i++)
             {
                 var bodyType = bodyTypes[i];
-                float userWeight = settings.GetWeight(bodyType, pawn.gender);
+                float userWeight = settings.GetWeight(bodyType, pawn.gender, pawn.def?.defName);
                 totalWeight += GetFinalBodyTypeWeight(bodyType, userWeight, pawn, original);
             }
 
@@ -166,7 +176,7 @@ namespace NPCStyleLimiter
             for (int i = 0; i < count; i++)
             {
                 var bodyType = bodyTypes[i];
-                float userWeight = settings.GetWeight(bodyType, pawn.gender);
+                float userWeight = settings.GetWeight(bodyType, pawn.gender, pawn.def?.defName);
                 float w = GetFinalBodyTypeWeight(bodyType, userWeight, pawn, original);
                 if (w > 0f)
                 {
@@ -188,6 +198,19 @@ namespace NPCStyleLimiter
             if (pawn.gender == Gender.Female && bodyType == BodyTypeDefOf.Male) return 0f;
             if (pawn.gender == Gender.Male && bodyType == BodyTypeDefOf.Female) return 0f;
 
+            // Prevent cross-species body type contamination.
+            // If bodyType is not original, and is not a vanilla body type (Male, Female, Thin, Fat, Hulk), 
+            // then it belongs to another alien race. We should never assign it.
+            if (bodyType != original && 
+                bodyType != BodyTypeDefOf.Male && 
+                bodyType != BodyTypeDefOf.Female && 
+                bodyType != BodyTypeDefOf.Thin && 
+                bodyType != BodyTypeDefOf.Fat && 
+                bodyType != BodyTypeDefOf.Hulk)
+            {
+                return 0f;
+            }
+
             return baseWeight * userMultiplier;
         }
     }
@@ -200,18 +223,113 @@ namespace NPCStyleLimiter
         [ThreadStatic]
         private static Pawn currentPawn;
 
+        [ThreadStatic]
+        private static bool disableApparelFilter;
+
+        private static System.Reflection.MethodInfo canUsePairMethod;
+        private static System.Reflection.FieldInfo allApparelPairsField;
+
         public static Pawn CurrentPawn => currentPawn;
+        public static bool DisableApparelFilter => disableApparelFilter;
+
+        private static object GetDefaultValue(System.Type t)
+        {
+            if (t.IsValueType) return System.Activator.CreateInstance(t);
+            return null;
+        }
 
         [HarmonyPrefix]
         public static void Prefix(Pawn pawn)
         {
             currentPawn = pawn;
+            disableApparelFilter = false;
+
+            // Safety check: Prevent complete apparel block which causes loop crashes in vanilla generator
+            if (pawn != null && CustomizerMod.Settings != null && PawnGenerationState.IsTargetGeneration)
+            {
+                if (allApparelPairsField == null)
+                {
+                    allApparelPairsField = typeof(PawnApparelGenerator).GetField("allApparelPairs", 
+                        System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+                }
+
+                if (allApparelPairsField != null)
+                {
+                    var allPairs = (System.Collections.Generic.List<ThingStuffPair>)allApparelPairsField.GetValue(null);
+                    if (allPairs != null)
+                    {
+                        if (canUsePairMethod == null)
+                        {
+                            canUsePairMethod = typeof(PawnApparelGenerator).GetMethod("CanUsePair", 
+                                System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+                        }
+
+                        if (canUsePairMethod != null)
+                        {
+                            var paramInfos = canUsePairMethod.GetParameters();
+                            object[] parameters = new object[paramInfos.Length];
+                            bool anyAllowed = false;
+                            int count = allPairs.Count;
+
+                            for (int i = 0; i < count; i++)
+                            {
+                                var pair = allPairs[i];
+                                if (pair.thing != null)
+                                {
+                                    if (parameters.Length > 0) parameters[0] = pair;
+                                    if (parameters.Length > 1) parameters[1] = pawn;
+                                    for (int p = 2; p < parameters.Length; p++)
+                                    {
+                                        var pInfo = paramInfos[p];
+                                        var defVal = pInfo.DefaultValue;
+                                        if (defVal != System.DBNull.Value)
+                                        {
+                                            parameters[p] = defVal;
+                                        }
+                                        else
+                                        {
+                                            var pType = pInfo.ParameterType;
+                                            if (pType == typeof(bool))
+                                            {
+                                                parameters[p] = false;
+                                            }
+                                            else if (pType == typeof(float) || pType == typeof(double))
+                                            {
+                                                parameters[p] = 1f;
+                                            }
+                                            else
+                                            {
+                                                parameters[p] = GetDefaultValue(pType);
+                                            }
+                                        }
+                                    }
+
+                                    bool canUse = (bool)canUsePairMethod.Invoke(null, parameters);
+                                    if (canUse)
+                                    {
+                                        if (!CustomizerMod.Settings.IsDisabled(pair.thing, pawn.gender, pawn.def?.defName))
+                                        {
+                                            anyAllowed = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                            if (!anyAllowed)
+                            {
+                                disableApparelFilter = true;
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         [HarmonyFinalizer]
         public static void Finalizer()
         {
             currentPawn = null;
+            disableApparelFilter = false;
         }
     }
 
@@ -224,11 +342,12 @@ namespace NPCStyleLimiter
         public static void Postfix(ThingStuffPair __instance, ref float __result)
         {
             Pawn pawn = Patch_PawnApparelGenerator_GenerateStartingApparelFor.CurrentPawn;
-            if (pawn != null && __result > 0f && PawnGenerationState.IsTargetGeneration && CustomizerMod.Settings != null)
+            if (pawn != null && !Patch_PawnApparelGenerator_GenerateStartingApparelFor.DisableApparelFilter && 
+                __result > 0f && PawnGenerationState.IsTargetGeneration && CustomizerMod.Settings != null)
             {
                 if (__instance.thing != null)
                 {
-                    float multiplier = CustomizerMod.Settings.GetWeight(__instance.thing, pawn.gender);
+                    float multiplier = CustomizerMod.Settings.GetWeight(__instance.thing, pawn.gender, pawn.def?.defName);
                     __result *= multiplier;
                 }
             }
@@ -243,11 +362,12 @@ namespace NPCStyleLimiter
         [HarmonyPostfix]
         public static void Postfix(ThingStuffPair pair, Pawn pawn, ref bool __result)
         {
-            if (__result && PawnGenerationState.IsTargetGeneration && CustomizerMod.Settings != null)
+            if (__result && !Patch_PawnApparelGenerator_GenerateStartingApparelFor.DisableApparelFilter && 
+                PawnGenerationState.IsTargetGeneration && CustomizerMod.Settings != null)
             {
                 if (pawn != null && pair.thing != null)
                 {
-                    if (CustomizerMod.Settings.IsDisabled(pair.thing, pawn.gender))
+                    if (CustomizerMod.Settings.IsDisabled(pair.thing, pawn.gender, pawn.def?.defName))
                     {
                         __result = false;
                     }

@@ -45,5 +45,24 @@
   <NPCStyleLimiter_ProfileNameEmpty>預設名稱不能為空。</NPCStyleLimiter_ProfileNameEmpty>
   <NPCStyleLimiter_NoProfilesFound>沒有已儲存的預設。</NPCStyleLimiter_NoProfilesFound>
   <NPCStyleLimiter_ReadOnly>唯讀</NPCStyleLimiter_ReadOnly>
-  <NPCStyleLimiter_ConfirmOverwrite>預設「{0}」已存在，是否覆蓋？</NPCStyleLimiter_ConfirmOverwrite>
+  <NPCStyleLimiter_ConfirmOverwrite>預設 "{0}" 已存在。是否覆蓋？</NPCStyleLimiter_ConfirmOverwrite>
+  <NPCStyleLimiter_GlobalConfig>全域配置</NPCStyleLimiter_GlobalConfig>
+  <NPCStyleLimiter_UseSpecificConfig>啟用獨立配置</NPCStyleLimiter_UseSpecificConfig>
+  <NPCStyleLimiter_InheritingGlobal>該種族當前正在繼承全域配置。</NPCStyleLimiter_InheritingGlobal>
+  <NPCStyleLimiter_CopyFromGlobal>從全域複製</NPCStyleLimiter_CopyFromGlobal>
+  <NPCStyleLimiter_GlobalConfigSub>對所有繼承全域配置的種族生效</NPCStyleLimiter_GlobalConfigSub>
+  <NPCStyleLimiter_SidebarGroupHome>主頁</NPCStyleLimiter_SidebarGroupHome>
+  <NPCStyleLimiter_SidebarGroupConfig>配置</NPCStyleLimiter_SidebarGroupConfig>
+  <NPCStyleLimiter_HomeTab>使用指南</NPCStyleLimiter_HomeTab>
+  <NPCStyleLimiter_HomeSubTitle>輕鬆定制遊戲內 NPC 生成時的服裝、髮型、鬍鬚與體型分配。</NPCStyleLimiter_HomeSubTitle>
+  <NPCStyleLimiter_HomeGuideTitle>快速上手</NPCStyleLimiter_HomeGuideTitle>
+  <NPCStyleLimiter_HomeGuide1>在左側列表中，您可以切換編輯「全域配置」，也可以針對特定種族進行「獨立配置」。</NPCStyleLimiter_HomeGuide1>
+  <NPCStyleLimiter_HomeGuide2>獨立配置的種族右側會顯示「●」標記。未啟用獨立配置的種族將預設繼承全域配置。</NPCStyleLimiter_HomeGuide2>
+  <NPCStyleLimiter_HomeGuide3>如果您開啟了「分性別配置」，就可以分別為男性和女性小人設定完全不同的外觀樣式。</NPCStyleLimiter_HomeGuide3>
+  <NPCStyleLimiter_HomeGuide4>在右側列表中，透過滑塊調整生成概率。1.0x 為原版概率，最大可放大至 5.0x。如果您不希望生成某件裝備或髮型，只需關閉左側的開關或將其拖動到 0.0x 即可。</NPCStyleLimiter_HomeGuide4>
+  <NPCStyleLimiter_HomeGuide5>開啟「自定義男女比例」後，您可以精確控制該種族在世界中生成的男女比例分配。</NPCStyleLimiter_HomeGuide5>
+  <NPCStyleLimiter_HomeLimitTitle>核心機制提示</NPCStyleLimiter_HomeLimitTitle>
+  <NPCStyleLimiter_HomeLimitDesc>重要提示：為了保證與其他模組的相容性，不破壞遊戲原本的派系與職業裝備規則，模組的所有概率調整都是基於原版設定進行倍率縮放的（原版概率 × 自定義倍率）。\n這意味著，如果某種髮型、鬍鬚或服裝在原版遊戲中對於該小人本身就無法生成（例如原版權重為 0，或者因為性別、派系限制無法穿著），即將其倍率調高至 5.0x，它也依然不會生成。</NPCStyleLimiter_HomeLimitDesc>
+  <NPCStyleLimiter_HomeSafetyTitle>極端配置防崩潰保護</NPCStyleLimiter_HomeSafetyTitle>
+  <NPCStyleLimiter_HomeSafetyDesc>如果您不小心將某個種族所有能穿的衣服全部禁用了（全部設為 0.0x），原版的服裝生成機制會因為找不到任何可用衣物而導致遊戲卡死或紅字報錯。\n為了避免這種情況，模組內置了防卡死安全保護。當檢測到由於玩家設置導致當前小人無衣可穿時，系統會自動臨時放行，允許其生成最基礎的原版衣物以保障遊戲正常運轉。建議您為每個種族保留至少幾件常用服裝以獲得最佳配置效果。</NPCStyleLimiter_HomeSafetyDesc>
 </LanguageData>
