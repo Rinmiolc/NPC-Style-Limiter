@@ -238,7 +238,7 @@ namespace NPCStyleLimiter
 
         public void ResetToDefaults()
         {
-            if (currentProfileName != "Default")
+            if (!currentProfileName.Equals("Default", StringComparison.OrdinalIgnoreCase))
             {
                 if (!LoadProfile("Default"))
                 {
@@ -293,12 +293,16 @@ namespace NPCStyleLimiter
         public List<string> ListProfiles()
         {
             if (!Directory.Exists(ProfilesFolder)) return new List<string>();
-            return Directory.GetFiles(ProfilesFolder, "*.xml").Select(f => Path.GetFileNameWithoutExtension(f)).OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList();
+            return Directory.GetFiles(ProfilesFolder, "*.xml")
+                .Select(f => Path.GetFileNameWithoutExtension(f))
+                .Where(n => !n.Equals("Default", StringComparison.OrdinalIgnoreCase))
+                .OrderBy(n => n, StringComparer.OrdinalIgnoreCase)
+                .ToList();
         }
 
         public bool SaveProfile(string name)
         {
-            if (name == "Default") return false;
+            if (string.IsNullOrEmpty(name) || name.Equals("Default", StringComparison.OrdinalIgnoreCase)) return false;
             try
             {
                 string safeName = SanitizeFileName(name);
@@ -388,14 +392,15 @@ namespace NPCStyleLimiter
 
         private Dictionary<string, float> ReadWeightDict(XElement container) => container?.Elements("entry").ToDictionary(e => (string)e.Attribute("key"), e => (float)e.Attribute("value")) ?? new Dictionary<string, float>();
 
-        public bool DeleteProfile(string name) { if (name == "Default" || name == currentProfileName) return false; try { string path = GetProfilePath(name); if (File.Exists(path)) File.Delete(path); return true; } catch { return false; } }
+        public bool DeleteProfile(string name) { if (string.IsNullOrEmpty(name) || name.Equals("Default", StringComparison.OrdinalIgnoreCase) || name.Equals(currentProfileName, StringComparison.OrdinalIgnoreCase)) return false; try { string path = GetProfilePath(name); if (File.Exists(path)) File.Delete(path); return true; } catch { return false; } }
         public bool RenameProfile(string oldName, string newName)
         {
-            if (oldName == "Default") return false;
+            if (string.IsNullOrEmpty(oldName) || oldName.Equals("Default", StringComparison.OrdinalIgnoreCase)) return false;
+            if (string.IsNullOrEmpty(newName) || newName.Equals("Default", StringComparison.OrdinalIgnoreCase)) return false;
             string safeNewName = SanitizeFileName(newName);
             try { string oldPath = GetProfilePath(oldName), newPath = GetProfilePath(safeNewName); if (!File.Exists(oldPath)) return false; if (File.Exists(newPath)) File.Delete(newPath); File.Move(oldPath, newPath);
                 XDocument doc = XDocument.Load(newPath); if (doc.Root?.Element("profileName") != null) doc.Root.Element("profileName").Value = safeNewName; doc.Save(newPath);
-                if (currentProfileName == oldName) { currentProfileName = safeNewName; Write(); } return true; } catch { return false; }
+                if (currentProfileName.Equals(oldName, StringComparison.OrdinalIgnoreCase)) { currentProfileName = safeNewName; Write(); } return true; } catch { return false; }
         }
     }
 }

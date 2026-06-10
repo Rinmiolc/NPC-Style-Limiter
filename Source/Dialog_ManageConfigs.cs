@@ -84,7 +84,7 @@ namespace NPCStyleLimiter
             }
 
             Rect saveBtnRect = new Rect(inputRect.xMax + 8f, inputRect.y, 92f, 30f);
-            bool canSave = !string.IsNullOrEmpty(saveAsName.Trim()) && saveAsName.Trim() != "Default";
+            bool canSave = !string.IsNullOrEmpty(saveAsName.Trim()) && !saveAsName.Trim().Equals("Default", StringComparison.OrdinalIgnoreCase);
             
             if (!canSave) GUI.color = new Color(1f, 1f, 1f, 0.3f);
             if (Widgets.ButtonText(saveBtnRect, "NPCStyleLimiter_Save".Translate()) && canSave)
@@ -97,7 +97,7 @@ namespace NPCStyleLimiter
 
             // 3. Profile List Section
             List<string> profiles = CustomizerMod.Settings.ListProfiles();
-            if (!profiles.Contains("Default")) profiles.Insert(0, "Default");
+            if (!profiles.Any(p => p.Equals("Default", StringComparison.OrdinalIgnoreCase))) profiles.Insert(0, "Default");
 
             float listHeaderY = curY;
             Widgets.Label(new Rect(inRect.x + 5f, listHeaderY, 200f, 24f), "NPCStyleLimiter_StoredProfiles".Translate());
@@ -116,8 +116,8 @@ namespace NPCStyleLimiter
             {
                 string pName = profiles[i];
                 Rect rowRect = new Rect(0f, i * rowHeight, scrollInnerRect.width, rowHeight);
-                bool isDefault = pName == "Default";
-                bool isActive = pName == CustomizerMod.Settings.currentProfileName;
+                bool isDefault = pName.Equals("Default", StringComparison.OrdinalIgnoreCase);
+                bool isActive = pName.Equals(CustomizerMod.Settings.currentProfileName, StringComparison.OrdinalIgnoreCase);
                 bool isRenaming = renameTarget == pName;
 
                 // Row highlights
