@@ -375,4 +375,22 @@ namespace NPCStyleLimiter
             }
         }
     }
+
+    // Patch TaleRecorder.RecordTale to prevent accessing TicksAbs during scenario/QuickTest initialization.
+    // 补丁 TaleRecorder.RecordTale 以防止在场景或快速测试初始化期间访问 TicksAbs。
+    [HarmonyPatch(typeof(TaleRecorder), nameof(TaleRecorder.RecordTale))]
+    public static class Patch_TaleRecorder_RecordTale
+    {
+        [HarmonyPrefix]
+        public static bool Prefix()
+        {
+            // Skip recording tales if the game hasn't fully loaded into the playing state.
+            // This prevents "Accessing TicksAbs but gameStartAbsTick is not set yet" errors.
+            if (Current.ProgramState != ProgramState.Playing)
+            {
+                return false;
+            }
+            return true;
+        }
+    }
 }
