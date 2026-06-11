@@ -18,6 +18,7 @@
   <NPCStyleLimiter_ApplyToPlayerPawns>對玩家小人生效</NPCStyleLimiter_ApplyToPlayerPawns>
   <NPCStyleLimiter_MaleRatioLabel>男:{0} / 女:{1}</NPCStyleLimiter_MaleRatioLabel>
   <NPCStyleLimiter_Apparel>服裝列表</NPCStyleLimiter_Apparel>
+  <NPCStyleLimiter_HeadTypes>臉型列表</NPCStyleLimiter_HeadTypes>
   <NPCStyleLimiter_BodyTypes>體型列表</NPCStyleLimiter_BodyTypes>
   <NPCStyleLimiter_RestoreDefaults>恢復預設預設</NPCStyleLimiter_RestoreDefaults>
   <NPCStyleLimiter_DefaultsRestored>設定已恢復到預設預設。</NPCStyleLimiter_DefaultsRestored>

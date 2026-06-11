@@ -32,7 +32,8 @@ namespace NPCStyleLimiter
         private string hairSearchQuery = "";
         private string beardSearchQuery = "";
         private string apparelSearchQuery = "";
-        private int activeTab = 0; // 0: Hair, 1: Beard, 2: Apparel, 3: Body Types
+        private string headSearchQuery = "";
+        private int activeTab = 0; // 0: Hair, 1: Beard, 2: Apparel, 3: Head Types, 4: Body Types
         
         private string selectedModName = "All";
         private Gender editingGender = Gender.Male;
@@ -44,12 +45,14 @@ namespace NPCStyleLimiter
         private string lastHairSearch = null;
         private string lastBeardSearch = null;
         private string lastApparelSearch = null;
+        private string lastHeadSearch = null;
         private string lastRaceDefName = null;
         private bool cacheInitialized = false;
 
         private List<HairDef> allHairs = null;
         private List<BeardDef> allBeards = null;
         private List<ThingDef> allApparels = null;
+        private List<HeadTypeDef> allHeads = null;
         private List<BodyTypeDef> allBodyTypes = null;
         private List<ThingDef> allRaces = null;
 
@@ -64,8 +67,8 @@ namespace NPCStyleLimiter
         private void RebuildFilterCache()
         {
             cachedFilteredDefs.Clear();
-            string search = (activeTab == 0) ? hairSearchQuery : (activeTab == 1 ? beardSearchQuery : apparelSearchQuery);
-
+            string search = (activeTab == 0) ? hairSearchQuery : (activeTab == 1 ? beardSearchQuery : (activeTab == 2 ? apparelSearchQuery : headSearchQuery));
+ 
             if (activeTab == 0)
             {
                 if (allHairs == null) allHairs = DefDatabase<HairDef>.AllDefsListForReading.Where(d => d != null && d.defName != "Bald").OrderBy(d => d.label).ToList();
@@ -82,6 +85,11 @@ namespace NPCStyleLimiter
                 ApplyFilters(allApparels, search);
             }
             else if (activeTab == 3)
+            {
+                if (allHeads == null) allHeads = DefDatabase<HeadTypeDef>.AllDefsListForReading.Where(d => d != null).OrderBy(d => d.label ?? d.defName).ToList();
+                ApplyFilters(allHeads, search);
+            }
+            else if (activeTab == 4)
             {
                 if (allBodyTypes == null) allBodyTypes = DefDatabase<BodyTypeDef>.AllDefsListForReading.Where(d => d != null && d.defName != "Baby" && d.defName != "Child").OrderBy(d => d.label ?? d.defName).ToList();
                 cachedFilteredDefs.AddRange(allBodyTypes);
@@ -219,12 +227,12 @@ namespace NPCStyleLimiter
             Gender activeGender = raceSettings.useGenderConfig ? editingGender : Gender.None;
 
             if (!cacheInitialized || activeTab != lastActiveTab || selectedModName != lastModFilter || 
-                hairSearchQuery != lastHairSearch || beardSearchQuery != lastBeardSearch || apparelSearchQuery != lastApparelSearch ||
+                hairSearchQuery != lastHairSearch || beardSearchQuery != lastBeardSearch || apparelSearchQuery != lastApparelSearch || headSearchQuery != lastHeadSearch ||
                 selectedRaceDefName != lastRaceDefName)
             {
                 RebuildFilterCache();
                 lastActiveTab = activeTab; lastModFilter = selectedModName;
-                lastHairSearch = hairSearchQuery; lastBeardSearch = beardSearchQuery; lastApparelSearch = apparelSearchQuery;
+                lastHairSearch = hairSearchQuery; lastBeardSearch = beardSearchQuery; lastApparelSearch = apparelSearchQuery; lastHeadSearch = headSearchQuery;
                 lastRaceDefName = selectedRaceDefName;
                 cacheInitialized = true;
             }
@@ -360,23 +368,24 @@ namespace NPCStyleLimiter
             // --- TABS ---
             float curY = headerCard.yMax + 12f;
             Rect tabsRect = new Rect(inRect.x, curY, inRect.width, 38f);
-            float tW = tabsRect.width / 4f;
+            float tW = tabsRect.width / 5f;
             if (DrawModernTab(new Rect(tabsRect.x, curY, tW, 38f), "NPCStyleLimiter_HairStyles".Translate(), activeTab == 0)) activeTab = 0;
             if (DrawModernTab(new Rect(tabsRect.x + tW, curY, tW, 38f), "NPCStyleLimiter_BeardStyles".Translate(), activeTab == 1)) activeTab = 1;
             if (DrawModernTab(new Rect(tabsRect.x + tW * 2, curY, tW, 38f), "NPCStyleLimiter_Apparel".Translate(), activeTab == 2)) activeTab = 2;
-            if (DrawModernTab(new Rect(tabsRect.x + tW * 3, curY, tW, 38f), "NPCStyleLimiter_BodyTypes".Translate(), activeTab == 3)) activeTab = 3;
+            if (DrawModernTab(new Rect(tabsRect.x + tW * 3, curY, tW, 38f), "NPCStyleLimiter_HeadTypes".Translate(), activeTab == 3)) activeTab = 3;
+            if (DrawModernTab(new Rect(tabsRect.x + tW * 4, curY, tW, 38f), "NPCStyleLimiter_BodyTypes".Translate(), activeTab == 4)) activeTab = 4;
 
             // --- FILTER BAR ---
             curY = tabsRect.yMax + 10f;
-            if (activeTab != 3)
+            if (activeTab != 4)
             {
                 Rect filterBar = new Rect(inRect.x, curY, inRect.width, 40f);
                 Widgets.DrawRectFast(filterBar, PanelBgColor);
                 
                 Rect searchRect = new Rect(filterBar.x + 10f, filterBar.y + 6f, 180f, 28f);
-                string s = (activeTab == 0) ? hairSearchQuery : (activeTab == 1 ? beardSearchQuery : apparelSearchQuery);
+                string s = (activeTab == 0) ? hairSearchQuery : (activeTab == 1 ? beardSearchQuery : (activeTab == 2 ? apparelSearchQuery : headSearchQuery));
                 string ns = Widgets.TextField(searchRect, s);
-                if (activeTab == 0) hairSearchQuery = ns; else if (activeTab == 1) beardSearchQuery = ns; else apparelSearchQuery = ns;
+                if (activeTab == 0) hairSearchQuery = ns; else if (activeTab == 1) beardSearchQuery = ns; else if (activeTab == 2) apparelSearchQuery = ns; else headSearchQuery = ns;
 
                 Rect modBtn = new Rect(searchRect.xMax + 10f, filterBar.y + 6f, 150f, 28f);
                 string modLabel = selectedModName == "All" ? "NPCStyleLimiter_AllMods".Translate().ToString() : selectedModName;
@@ -395,6 +404,10 @@ namespace NPCStyleLimiter
                     else if (activeTab == 2)
                     {
                         foreach (var td in DefDatabase<ThingDef>.AllDefsListForReading) if (td != null && td.IsApparel) mods.Add(td.modContentPack?.Name ?? "Core");
+                    }
+                    else if (activeTab == 3)
+                    {
+                        foreach (var hd in DefDatabase<HeadTypeDef>.AllDefsListForReading) if (hd != null) mods.Add(hd.modContentPack?.Name ?? "Core");
                     }
                     foreach (var m in mods.OrderBy(x => x)) opts.Add(new FloatMenuOption(m, () => selectedModName = m));
                     Find.WindowStack.Add(new FloatMenu(opts));
@@ -461,7 +474,7 @@ namespace NPCStyleLimiter
                 if (active != (w > 0f)) Settings.SetWeight(d, gender, active ? 1.0f : 0.0f, selectedRaceDefName);
 
                 // Icon
-                Texture2D tex = (d is StyleItemDef s) ? s.Icon : (d is ThingDef t ? t.uiIcon : null);
+                Texture2D tex = (d is StyleItemDef s) ? s.Icon : (d is ThingDef t ? t.uiIcon : (d is HeadTypeDef ht ? ht.Icon : null));
                 if (tex != null) {
                     GUI.color = (d is ThingDef t2) ? t2.uiIconColor : Color.white;
                     Widgets.DrawTextureFitted(new Rect(50f, row.y + 5f, 30f, 30f), tex, 1f);
@@ -471,7 +484,7 @@ namespace NPCStyleLimiter
                 // Label
                 Text.Anchor = TextAnchor.MiddleLeft;
                 string label = d.LabelCap.NullOrEmpty() ? d.defName : (string)d.LabelCap;
-                if (Settings.debugMode || Prefs.DevMode) label += " [" + d.defName + "]";
+                if ((Settings.debugMode || Prefs.DevMode) && !(d is HeadTypeDef) && !(d is BodyTypeDef)) label += " [" + d.defName + "]";
                 Widgets.Label(new Rect(90f, row.y, view.width * 0.45f, rH), label);
                 
                 // Weight Slider

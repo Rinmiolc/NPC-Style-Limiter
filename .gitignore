@@ -2,6 +2,7 @@ Source/obj/
 Source/bin/
 .vs/
 .agent/
+.claude/
 .idea/
 *.user
 *.suo
@@ -10,3 +11,4 @@ Source/bin/
 .DS_Store
 Thumbs.db
 GEMINI.md
+CLAUDE.md

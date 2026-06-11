@@ -18,6 +18,7 @@
   <NPCStyleLimiter_ApplyToPlayerPawns>Apply to Player Pawns</NPCStyleLimiter_ApplyToPlayerPawns>
   <NPCStyleLimiter_MaleRatioLabel>M:{0} / F:{1}</NPCStyleLimiter_MaleRatioLabel>
   <NPCStyleLimiter_Apparel>Apparel</NPCStyleLimiter_Apparel>
+  <NPCStyleLimiter_HeadTypes>Head Types</NPCStyleLimiter_HeadTypes>
   <NPCStyleLimiter_BodyTypes>Body Types</NPCStyleLimiter_BodyTypes>
   <NPCStyleLimiter_RestoreDefaults>Restore Defaults</NPCStyleLimiter_RestoreDefaults>
   <NPCStyleLimiter_DefaultsRestored>Settings restored to defaults.</NPCStyleLimiter_DefaultsRestored>

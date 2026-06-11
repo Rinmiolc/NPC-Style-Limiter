@@ -393,4 +393,88 @@ namespace NPCStyleLimiter
             return true;
         }
     }
+
+    // Patch Pawn_StoryTracker.TryGetRandomHeadFromSet to customize and filter head types
+    // 补丁 Pawn_StoryTracker.TryGetRandomHeadFromSet 以过滤并调整选定脸型
+    [HarmonyPatch(typeof(Pawn_StoryTracker), nameof(Pawn_StoryTracker.TryGetRandomHeadFromSet))]
+    public static class Patch_Pawn_StoryTracker_TryGetRandomHeadFromSet
+    {
+        [HarmonyPrefix]
+        public static bool Prefix(Pawn_StoryTracker __instance, Pawn ___pawn, ref IEnumerable<HeadTypeDef> options, ref bool __result)
+        {
+            if (PawnGenerationState.IsTargetGeneration && __instance != null && ___pawn != null && 
+                ___pawn.RaceProps.Humanlike && CustomizerMod.Settings != null && options != null)
+            {
+                string raceDefName = ___pawn.def?.defName;
+                var settings = CustomizerMod.Settings;
+                bool isHuman = ___pawn.def == ThingDefOf.Human;
+                bool hasSpecificConfig = settings.raceSettings != null && 
+                                        settings.raceSettings.TryGetValue(raceDefName, out var s) && 
+                                        s.useSpecificConfig;
+
+                if (isHuman || hasSpecificConfig)
+                {
+                    var filteredOptions = new List<HeadTypeDef>();
+                    foreach (var head in options)
+                    {
+                        if (head != null && !settings.IsDisabled(head, ___pawn.gender, raceDefName))
+                        {
+                            filteredOptions.Add(head);
+                        }
+                    }
+
+                    if (filteredOptions.Count == 0)
+                    {
+                        foreach (var head in options)
+                        {
+                            if (head != null) filteredOptions.Add(head);
+                        }
+                    }
+
+                    if (filteredOptions.Count > 0)
+                    {
+                        float totalWeight = 0f;
+                        var weights = new List<float>();
+                        for (int i = 0; i < filteredOptions.Count; i++)
+                        {
+                            float weight = settings.GetWeight(filteredOptions[i], ___pawn.gender, raceDefName);
+                            if (weight < 0f) weight = 0f;
+                            weights.Add(weight);
+                            totalWeight += weight;
+                        }
+
+                        HeadTypeDef chosenHead = null;
+                        if (totalWeight > 0f)
+                        {
+                            float rand = Rand.Value * totalWeight;
+                            float currentSum = 0f;
+                            for (int i = 0; i < filteredOptions.Count; i++)
+                            {
+                                currentSum += weights[i];
+                                if (rand <= currentSum)
+                                {
+                                    chosenHead = filteredOptions[i];
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (chosenHead == null)
+                        {
+                            chosenHead = filteredOptions.RandomElement();
+                        }
+
+                        if (chosenHead != null)
+                        {
+                            __instance.headType = chosenHead;
+                            __result = true;
+                            return false; // Skip original method
+                        }
+                    }
+                }
+            }
+            return true; // Let vanilla run
+        }
+    }
 }
+

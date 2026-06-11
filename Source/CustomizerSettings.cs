@@ -112,7 +112,8 @@ namespace NPCStyleLimiter
             if (def is HairDef) typeOffset = 0;
             else if (def is BeardDef) typeOffset = 16384;
             else if (def is BodyTypeDef) typeOffset = 32768;
-            else if (def is ThingDef) typeOffset = 49152;
+            else if (def is HeadTypeDef) typeOffset = 49152;
+            else if (def is ThingDef) typeOffset = 65536;
             
             int idx = typeOffset + def.index;
             if (idx >= MaxFastIndex) return 0;
@@ -231,9 +232,13 @@ namespace NPCStyleLimiter
                 if (typeName == nameof(BeardDef)) return DefDatabase<BeardDef>.GetNamedSilentFail(realDefName);
                 if (typeName == nameof(ThingDef)) return DefDatabase<ThingDef>.GetNamedSilentFail(realDefName);
                 if (typeName == nameof(BodyTypeDef)) return DefDatabase<BodyTypeDef>.GetNamedSilentFail(realDefName);
+                if (typeName == nameof(HeadTypeDef)) return DefDatabase<HeadTypeDef>.GetNamedSilentFail(realDefName);
             }
-            return (Def)DefDatabase<HairDef>.GetNamedSilentFail(defName) ?? DefDatabase<BeardDef>.GetNamedSilentFail(defName) ??
-                   (Def)DefDatabase<ThingDef>.GetNamedSilentFail(defName) ?? DefDatabase<BodyTypeDef>.GetNamedSilentFail(defName);
+            return (Def)DefDatabase<HairDef>.GetNamedSilentFail(defName) ??
+                   (Def)DefDatabase<BeardDef>.GetNamedSilentFail(defName) ??
+                   (Def)DefDatabase<ThingDef>.GetNamedSilentFail(defName) ??
+                   (Def)DefDatabase<BodyTypeDef>.GetNamedSilentFail(defName) ??
+                   (Def)DefDatabase<HeadTypeDef>.GetNamedSilentFail(defName);
         }
 
         public void ResetToDefaults()
