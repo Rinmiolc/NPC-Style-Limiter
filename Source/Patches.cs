@@ -4,6 +4,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using HarmonyLib;
 using RimWorld;
 using Verse;
@@ -20,20 +21,20 @@ namespace NPCStyleLimiter
         {
             PawnGenerationState.Enter(request.Context);
 
-            // Adjust gender ratio if enabled and request does not dictate a fixed gender (only for humanlikes to avoid breaking animals/mechanoids)
-            // 若启用了自定义男女比例，且当前请求未固定性别，则重新分配性别（仅针对人类，避免干扰动物和机械族）
-            if (PawnGenerationState.IsTargetGeneration && CustomizerMod.Settings != null && CustomizerMod.Settings.adjustGenderRatio && !request.FixedGender.HasValue &&
+            // Adjust gender ratio if enabled for this race
+            if (PawnGenerationState.IsTargetGeneration && CustomizerMod.Settings != null && !request.FixedGender.HasValue &&
                 request.KindDef?.RaceProps != null && request.KindDef.RaceProps.Humanlike)
             {
-                // Do not override if the specific PawnKindDef has a fixed gender requirement
-                // 若该具体角色类型 (PawnKindDef) 自身有硬性性别限制，则不予干预
-                if (request.KindDef.fixedGender.HasValue)
-                {
-                    return;
-                }
+                string raceDefName = request.KindDef.race?.defName;
+                var raceSettings = CustomizerMod.Settings.GetSettingsForRace(raceDefName);
 
-                Gender chosenGender = (Rand.Value < CustomizerMod.Settings.maleRatio) ? Gender.Male : Gender.Female;
-                request.FixedGender = chosenGender;
+                if (raceSettings.adjustGenderRatio)
+                {
+                    if (request.KindDef.fixedGender.HasValue) return;
+
+                    Gender chosenGender = (Rand.Value < raceSettings.maleRatio) ? Gender.Male : Gender.Female;
+                    request.FixedGender = chosenGender;
+                }
             }
         }
 
@@ -61,7 +62,7 @@ namespace NPCStyleLimiter
                 // 绝不限制光头（Bald）或无胡须（NoBeard）（作为安全的后备选项）
                 if (styleItemDef.defName == "Bald" || styleItemDef.defName == "NoBeard") return;
 
-                if (CustomizerMod.Settings.IsDisabled(styleItemDef, pawn.gender))
+                if (CustomizerMod.Settings.IsDisabled(styleItemDef, pawn.gender, pawn.def?.defName))
                 {
                     __result = false;
                 }
@@ -79,7 +80,7 @@ namespace NPCStyleLimiter
         {
             if (PawnGenerationState.IsTargetGeneration && __result > 0f && styleItem != null && pawn != null && CustomizerMod.Settings != null)
             {
-                float w = CustomizerMod.Settings.GetWeight(styleItem, pawn.gender);
+                float w = CustomizerMod.Settings.GetWeight(styleItem, pawn.gender, pawn.def?.defName);
                 __result *= w;
             }
         }
@@ -91,7 +92,15 @@ namespace NPCStyleLimiter
     public static class Patch_PawnGenerator_GetBodyTypeFor
     {
         private static readonly object lockObj = new object();
-        private static List<BodyTypeDef> cachedAdultBodyTypes;
+        private static volatile List<BodyTypeDef> cachedAdultBodyTypes;
+
+        public static void ResetBodyTypeCache()
+        {
+            lock (lockObj)
+            {
+                cachedAdultBodyTypes = null;
+            }
+        }
 
         private static List<BodyTypeDef> AdultBodyTypes
         {
@@ -130,10 +139,20 @@ namespace NPCStyleLimiter
                 // 扩大对 HAR 及其他类人种族的兼容性
                 if (pawn.RaceProps.Humanlike && __result != BodyTypeDefOf.Baby && __result != BodyTypeDefOf.Child)
                 {
-                    BodyTypeDef customType = GetWeightedBodyTypeFor(pawn, __result);
-                    if (customType != null)
+                    string raceDefName = pawn.def?.defName;
+                    var settings = CustomizerMod.Settings;
+                    bool isHuman = pawn.def == ThingDefOf.Human;
+                    bool hasSpecificConfig = settings.raceSettings != null && 
+                                            settings.raceSettings.TryGetValue(raceDefName, out var s) && 
+                                            s.useSpecificConfig;
+
+                    if (isHuman || hasSpecificConfig)
                     {
-                        __result = customType;
+                        BodyTypeDef customType = GetWeightedBodyTypeFor(pawn, __result);
+                        if (customType != null)
+                        {
+                            __result = customType;
+                        }
                     }
                 }
             }
@@ -149,12 +168,13 @@ namespace NPCStyleLimiter
 
             float totalWeight = 0f;
             int count = bodyTypes.Count;
+            string raceDefName = pawn.def?.defName;
 
             // Pass 1: Sum the weights considering the original preference
             for (int i = 0; i < count; i++)
             {
                 var bodyType = bodyTypes[i];
-                float userWeight = settings.GetWeight(bodyType, pawn.gender);
+                float userWeight = settings.GetWeight(bodyType, pawn.gender, raceDefName);
                 totalWeight += GetFinalBodyTypeWeight(bodyType, userWeight, pawn, original);
             }
 
@@ -166,7 +186,7 @@ namespace NPCStyleLimiter
             for (int i = 0; i < count; i++)
             {
                 var bodyType = bodyTypes[i];
-                float userWeight = settings.GetWeight(bodyType, pawn.gender);
+                float userWeight = settings.GetWeight(bodyType, pawn.gender, raceDefName);
                 float w = GetFinalBodyTypeWeight(bodyType, userWeight, pawn, original);
                 if (w > 0f)
                 {
@@ -188,6 +208,29 @@ namespace NPCStyleLimiter
             if (pawn.gender == Gender.Female && bodyType == BodyTypeDefOf.Male) return 0f;
             if (pawn.gender == Gender.Male && bodyType == BodyTypeDefOf.Female) return 0f;
 
+            // Prevent cross-species body type contamination.
+            // Enforce bidirectional separation for non-human races:
+            // Vanilla pawns only get vanilla body types; alien pawns only get alien body types.
+            if (pawn.def != ThingDefOf.Human)
+            {
+                bool isOriginalVanilla = original == BodyTypeDefOf.Male || 
+                                         original == BodyTypeDefOf.Female || 
+                                         original == BodyTypeDefOf.Thin || 
+                                         original == BodyTypeDefOf.Fat || 
+                                         original == BodyTypeDefOf.Hulk;
+
+                bool isBodyTypeVanilla = bodyType == BodyTypeDefOf.Male || 
+                                         bodyType == BodyTypeDefOf.Female || 
+                                         bodyType == BodyTypeDefOf.Thin || 
+                                         bodyType == BodyTypeDefOf.Fat || 
+                                         bodyType == BodyTypeDefOf.Hulk;
+
+                if (isOriginalVanilla != isBodyTypeVanilla)
+                {
+                    return 0f;
+                }
+            }
+
             return baseWeight * userMultiplier;
         }
     }
@@ -200,18 +243,43 @@ namespace NPCStyleLimiter
         [ThreadStatic]
         private static Pawn currentPawn;
 
+        [ThreadStatic]
+        private static bool disableApparelFilter;
+
         public static Pawn CurrentPawn => currentPawn;
+        public static bool DisableApparelFilter => disableApparelFilter;
+
+        public struct State
+        {
+            public Pawn pawn;
+            public bool disableFilter;
+        }
 
         [HarmonyPrefix]
-        public static void Prefix(Pawn pawn)
+        public static void Prefix(Pawn pawn, out State __state)
         {
+            __state = new State { pawn = currentPawn, disableFilter = disableApparelFilter };
+
             currentPawn = pawn;
+            disableApparelFilter = false;
+
+            if (pawn != null && CustomizerMod.Settings != null && PawnGenerationState.IsTargetGeneration)
+            {
+                string raceDefName = pawn.def?.defName;
+                var s = CustomizerMod.Settings.GetSettingsForRace(raceDefName);
+                bool anyAllowed = s.useGenderConfig ? (pawn.gender == Gender.Female ? s.hasAnyApparelEnabledFemale : s.hasAnyApparelEnabledMale) : s.hasAnyApparelEnabled;
+                if (!anyAllowed)
+                {
+                    disableApparelFilter = true;
+                }
+            }
         }
 
         [HarmonyFinalizer]
-        public static void Finalizer()
+        public static void Finalizer(State __state)
         {
-            currentPawn = null;
+            currentPawn = __state.pawn;
+            disableApparelFilter = __state.disableFilter;
         }
     }
 
@@ -221,14 +289,15 @@ namespace NPCStyleLimiter
     public static class Patch_ThingStuffPair_get_Commonality
     {
         [HarmonyPostfix]
-        public static void Postfix(ThingStuffPair __instance, ref float __result)
+        public static void Postfix(ref ThingStuffPair __instance, ref float __result)
         {
             Pawn pawn = Patch_PawnApparelGenerator_GenerateStartingApparelFor.CurrentPawn;
-            if (pawn != null && __result > 0f && PawnGenerationState.IsTargetGeneration && CustomizerMod.Settings != null)
+            if (pawn != null && !Patch_PawnApparelGenerator_GenerateStartingApparelFor.DisableApparelFilter && 
+                __result > 0f && PawnGenerationState.IsTargetGeneration && CustomizerMod.Settings != null)
             {
                 if (__instance.thing != null)
                 {
-                    float multiplier = CustomizerMod.Settings.GetWeight(__instance.thing, pawn.gender);
+                    float multiplier = CustomizerMod.Settings.GetWeight(__instance.thing, pawn.gender, pawn.def?.defName);
                     __result *= multiplier;
                 }
             }
@@ -243,11 +312,12 @@ namespace NPCStyleLimiter
         [HarmonyPostfix]
         public static void Postfix(ThingStuffPair pair, Pawn pawn, ref bool __result)
         {
-            if (__result && PawnGenerationState.IsTargetGeneration && CustomizerMod.Settings != null)
+            if (__result && !Patch_PawnApparelGenerator_GenerateStartingApparelFor.DisableApparelFilter && 
+                PawnGenerationState.IsTargetGeneration && CustomizerMod.Settings != null)
             {
                 if (pawn != null && pair.thing != null)
                 {
-                    if (CustomizerMod.Settings.IsDisabled(pair.thing, pawn.gender))
+                    if (CustomizerMod.Settings.IsDisabled(pair.thing, pawn.gender, pawn.def?.defName))
                     {
                         __result = false;
                     }
@@ -255,4 +325,129 @@ namespace NPCStyleLimiter
             }
         }
     }
+
+    // Patch TaleRecorder.RecordTale to prevent accessing TicksAbs during scenario/QuickTest initialization.
+    // 补丁 TaleRecorder.RecordTale 以防止在场景或快速测试初始化期间访问 TicksAbs。
+    [HarmonyPatch(typeof(TaleRecorder), nameof(TaleRecorder.RecordTale))]
+    public static class Patch_TaleRecorder_RecordTale
+    {
+        [HarmonyPrefix]
+        public static bool Prefix()
+        {
+            // Skip recording tales if the game hasn't fully loaded and TickManager is not ready yet.
+            // This prevents "Accessing TicksAbs but gameStartAbsTick is not set yet" errors.
+            if (Current.ProgramState != ProgramState.Playing)
+            {
+                try
+                {
+                    int dummy = Find.TickManager.TicksAbs;
+                }
+                catch (InvalidOperationException)
+                {
+                    return false;
+                }
+                catch (NullReferenceException)
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+    }
+
+    // Patch Pawn_StoryTracker.TryGetRandomHeadFromSet to customize and filter head types
+    // 补丁 Pawn_StoryTracker.TryGetRandomHeadFromSet 以过滤并调整选定脸型
+    [HarmonyPatch(typeof(Pawn_StoryTracker), nameof(Pawn_StoryTracker.TryGetRandomHeadFromSet))]
+    public static class Patch_Pawn_StoryTracker_TryGetRandomHeadFromSet
+    {
+        [ThreadStatic]
+        private static List<HeadTypeDef> filteredOptionsCache;
+
+        [ThreadStatic]
+        private static List<float> weightsCache;
+
+        [HarmonyPostfix]
+        public static void Postfix(Pawn_StoryTracker __instance, Pawn ___pawn, IEnumerable<HeadTypeDef> options, ref bool __result)
+        {
+            if (PawnGenerationState.IsTargetGeneration && __instance != null && ___pawn != null && 
+                ___pawn.RaceProps.Humanlike && CustomizerMod.Settings != null && options != null)
+            {
+                string raceDefName = ___pawn.def?.defName;
+                var settings = CustomizerMod.Settings;
+                bool isHuman = ___pawn.def == ThingDefOf.Human;
+                bool hasSpecificConfig = settings.raceSettings != null && 
+                                        settings.raceSettings.TryGetValue(raceDefName, out var s) && 
+                                        s.useSpecificConfig;
+
+                if (isHuman || hasSpecificConfig)
+                {
+                    var optionsList = options as IList<HeadTypeDef> ?? options.ToList();
+
+                    if (filteredOptionsCache == null) filteredOptionsCache = new List<HeadTypeDef>();
+                    else filteredOptionsCache.Clear();
+
+                    for (int i = 0; i < optionsList.Count; i++)
+                    {
+                        var head = optionsList[i];
+                        if (head != null && !settings.IsDisabled(head, ___pawn.gender, raceDefName))
+                        {
+                            filteredOptionsCache.Add(head);
+                        }
+                    }
+
+                    if (filteredOptionsCache.Count == 0)
+                    {
+                        for (int i = 0; i < optionsList.Count; i++)
+                        {
+                            var head = optionsList[i];
+                            if (head != null) filteredOptionsCache.Add(head);
+                        }
+                    }
+
+                    if (filteredOptionsCache.Count > 0)
+                    {
+                        float totalWeight = 0f;
+                        if (weightsCache == null) weightsCache = new List<float>();
+                        else weightsCache.Clear();
+
+                        for (int i = 0; i < filteredOptionsCache.Count; i++)
+                        {
+                            float weight = settings.GetWeight(filteredOptionsCache[i], ___pawn.gender, raceDefName);
+                            if (weight < 0f) weight = 0f;
+                            weightsCache.Add(weight);
+                            totalWeight += weight;
+                        }
+
+                        HeadTypeDef chosenHead = null;
+                        if (totalWeight > 0f)
+                        {
+                            float rand = Rand.Value * totalWeight;
+                            float currentSum = 0f;
+                            for (int i = 0; i < filteredOptionsCache.Count; i++)
+                            {
+                                currentSum += weightsCache[i];
+                                if (rand <= currentSum)
+                                {
+                                    chosenHead = filteredOptionsCache[i];
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (chosenHead == null)
+                        {
+                            chosenHead = filteredOptionsCache.RandomElement();
+                        }
+
+                        if (chosenHead != null)
+                        {
+                            __instance.headType = chosenHead;
+                            __result = true;
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
+

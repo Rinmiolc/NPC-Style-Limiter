@@ -27,13 +27,17 @@ namespace NPCStyleLimiter
         public override string SettingsCategory() => "NPCStyleLimiter_Category".Translate();
 
         private Vector2 scrollPosition = Vector2.zero;
+        private Vector2 raceScrollPos = Vector2.zero;
+        private Vector2 homeScrollPos = Vector2.zero;
         private string hairSearchQuery = "";
         private string beardSearchQuery = "";
         private string apparelSearchQuery = "";
-        private int activeTab = 0; // 0: Hair, 1: Beard, 2: Apparel, 3: Body Types
+        private string headSearchQuery = "";
+        private int activeTab = 0; // 0: Hair, 1: Beard, 2: Apparel, 3: Head Types, 4: Body Types
         
         private string selectedModName = "All";
         private Gender editingGender = Gender.Male;
+        private string selectedRaceDefName = "Home";
 
         private readonly List<Def> cachedFilteredDefs = new List<Def>();
         private int lastActiveTab = -1;
@@ -41,12 +45,16 @@ namespace NPCStyleLimiter
         private string lastHairSearch = null;
         private string lastBeardSearch = null;
         private string lastApparelSearch = null;
+        private string lastHeadSearch = null;
+        private string lastRaceDefName = null;
         private bool cacheInitialized = false;
 
         private List<HairDef> allHairs = null;
         private List<BeardDef> allBeards = null;
         private List<ThingDef> allApparels = null;
+        private List<HeadTypeDef> allHeads = null;
         private List<BodyTypeDef> allBodyTypes = null;
+        private List<ThingDef> allRaces = null;
 
         // Modern Theme
         private static readonly Color AccentColor = new Color(0.78f, 0.55f, 0.15f);
@@ -59,24 +67,29 @@ namespace NPCStyleLimiter
         private void RebuildFilterCache()
         {
             cachedFilteredDefs.Clear();
-            string search = (activeTab == 0) ? hairSearchQuery : (activeTab == 1 ? beardSearchQuery : apparelSearchQuery);
-
+            string search = (activeTab == 0) ? hairSearchQuery : (activeTab == 1 ? beardSearchQuery : (activeTab == 2 ? apparelSearchQuery : headSearchQuery));
+ 
             if (activeTab == 0)
             {
-                if (allHairs == null) allHairs = DefDatabase<HairDef>.AllDefsListForReading.Where(d => d != null && d.defName != "Bald").OrderBy(d => d.label).ToList();
+                if (allHairs == null) allHairs = DefDatabase<HairDef>.AllDefsListForReading.Where(d => d != null && d.defName != "Bald").OrderBy(d => d.label ?? d.defName).ToList();
                 ApplyFilters(allHairs, search);
             }
             else if (activeTab == 1)
             {
-                if (allBeards == null) allBeards = DefDatabase<BeardDef>.AllDefsListForReading.Where(d => d != null && d.defName != "NoBeard").OrderBy(d => d.label).ToList();
+                if (allBeards == null) allBeards = DefDatabase<BeardDef>.AllDefsListForReading.Where(d => d != null && d.defName != "NoBeard").OrderBy(d => d.label ?? d.defName).ToList();
                 ApplyFilters(allBeards, search);
             }
             else if (activeTab == 2)
             {
-                if (allApparels == null) allApparels = DefDatabase<ThingDef>.AllDefsListForReading.Where(d => d != null && d.IsApparel).OrderBy(d => d.label).ToList();
+                if (allApparels == null) allApparels = DefDatabase<ThingDef>.AllDefsListForReading.Where(d => d != null && d.IsApparel).OrderBy(d => d.label ?? d.defName).ToList();
                 ApplyFilters(allApparels, search);
             }
             else if (activeTab == 3)
+            {
+                if (allHeads == null) allHeads = DefDatabase<HeadTypeDef>.AllDefsListForReading.Where(d => d != null).OrderBy(d => d.label ?? d.defName).ToList();
+                ApplyFilters(allHeads, search);
+            }
+            else if (activeTab == 4)
             {
                 if (allBodyTypes == null) allBodyTypes = DefDatabase<BodyTypeDef>.AllDefsListForReading.Where(d => d != null && d.defName != "Baby" && d.defName != "Child").OrderBy(d => d.label ?? d.defName).ToList();
                 cachedFilteredDefs.AddRange(allBodyTypes);
@@ -97,117 +110,306 @@ namespace NPCStyleLimiter
             }
         }
 
+        public void ClearUICaches()
+        {
+            allHairs = null;
+            allBeards = null;
+            allApparels = null;
+            allHeads = null;
+            allBodyTypes = null;
+            allRaces = null;
+            cacheInitialized = false;
+            Patch_PawnGenerator_GetBodyTypeFor.ResetBodyTypeCache();
+        }
+
         public override void DoSettingsWindowContents(Rect inRect)
         {
-            Settings.InitializeSets();
-            Gender activeGender = Settings.useGenderConfig ? editingGender : Gender.None;
+            var savedAnchor = Text.Anchor;
+            var savedColor = GUI.color;
+            var savedFont = Text.Font;
+            try
+            {
+                Settings.InitializeSets();
+
+                if (allRaces == null)
+                {
+                    allRaces = DefDatabase<ThingDef>.AllDefsListForReading
+                        .Where(d => d.category == ThingCategory.Pawn && d.race != null && d.race.Humanlike)
+                        .OrderBy(d => d.label ?? d.defName)
+                        .ToList();
+                }
+
+                // --- LAYOUT ---
+                float sidebarWidth = 170f;
+                Rect sidebarRect = new Rect(inRect.x, inRect.y, sidebarWidth, inRect.height);
+                Rect contentRect = new Rect(sidebarRect.xMax + 10f, inRect.y, inRect.width - sidebarWidth - 10f, inRect.height);
+
+                // --- SIDEBAR: RACE SELECTOR ---
+                DrawRaceSidebar(sidebarRect);
+
+                // --- CONTENT AREA ---
+                DrawMainContent(contentRect);
+            }
+            finally
+            {
+                Text.Anchor = savedAnchor;
+                GUI.color = savedColor;
+                Text.Font = savedFont;
+            }
+        }
+
+        private void DrawRaceSidebar(Rect rect)
+        {
+            Widgets.DrawRectFast(rect, CardBgColor);
+            
+            Rect viewRect = new Rect(0, 0, rect.width - 16f, 48f + (allRaces.Count + 2) * 32f);
+            Widgets.BeginScrollView(rect, ref raceScrollPos, viewRect);
+            
+            float curY = 0;
+
+            // Group 1: General/Home
+            Text.Font = GameFont.Tiny;
+            GUI.color = InactiveTextColor;
+            Widgets.Label(new Rect(8f, curY + 6f, viewRect.width - 16f, 20f), "NPCStyleLimiter_SidebarGroupHome".Translate());
+            Text.Font = GameFont.Small;
+            GUI.color = Color.white;
+            curY += 24f;
+
+            // Home / Guide Option
+            if (DrawRaceRow(new Rect(0, curY, viewRect.width, 30f), "NPCStyleLimiter_HomeTab".Translate(), selectedRaceDefName == "Home", false))
+            {
+                selectedRaceDefName = "Home";
+            }
+            curY += 32f;
+
+            // Group 2: Configurations
+            Text.Font = GameFont.Tiny;
+            GUI.color = InactiveTextColor;
+            Widgets.Label(new Rect(8f, curY + 6f, viewRect.width - 16f, 20f), "NPCStyleLimiter_SidebarGroupConfig".Translate());
+            Text.Font = GameFont.Small;
+            GUI.color = Color.white;
+            curY += 24f;
+
+            // Global Option
+            if (DrawRaceRow(new Rect(0, curY, viewRect.width, 30f), "NPCStyleLimiter_GlobalConfig".Translate(), selectedRaceDefName == CustomizerSettings.GlobalKey, true))
+            {
+                selectedRaceDefName = CustomizerSettings.GlobalKey;
+            }
+            curY += 32f;
+
+            foreach (var race in allRaces)
+            {
+                bool hasSpecific = Settings.raceSettings.TryGetValue(race.defName, out var s) && s.useSpecificConfig;
+                
+                string displayLabel = race.LabelCap;
+                if (race.defName != "Human" && (race.label == "Human" || race.label == "人类" || race.defName == "CreepJoiner"))
+                {
+                    displayLabel += " (" + race.defName + ")";
+                }
+
+                if (DrawRaceRow(new Rect(0, curY, viewRect.width, 30f), displayLabel, selectedRaceDefName == race.defName, hasSpecific))
+                {
+                    selectedRaceDefName = race.defName;
+                }
+                curY += 32f;
+            }
+
+            Widgets.EndScrollView();
+        }
+
+        private bool DrawRaceRow(Rect rect, string label, bool selected, bool active)
+        {
+            if (Mouse.IsOver(rect)) Widgets.DrawRectFast(rect, HoverRowColor);
+            if (selected) Widgets.DrawRectFast(new Rect(rect.x + 8f, rect.y, 3f, rect.height), AccentColor);
+            
+            Text.Anchor = TextAnchor.MiddleLeft;
+            GUI.color = selected ? Color.white : InactiveTextColor;
+            Widgets.Label(new Rect(rect.x + 20f, rect.y, rect.width - 36f, rect.height), label);
+            
+            if (active)
+            {
+                GUI.color = AccentColor;
+                Widgets.Label(new Rect(rect.xMax - 15f, rect.y, 15f, rect.height), "●");
+            }
+            
+            GUI.color = Color.white;
+            Text.Anchor = TextAnchor.UpperLeft;
+            return Widgets.ButtonInvisible(rect);
+        }
+
+        private void DrawMainContent(Rect inRect)
+        {
+            if (selectedRaceDefName == "Home")
+            {
+                DrawHomeContent(inRect);
+                return;
+            }
+
+            var raceSettings = Settings.GetSettingsForRaceRaw(selectedRaceDefName);
+            bool isGlobal = selectedRaceDefName == CustomizerSettings.GlobalKey;
+            
+            Gender activeGender = raceSettings.useGenderConfig ? editingGender : Gender.None;
 
             if (!cacheInitialized || activeTab != lastActiveTab || selectedModName != lastModFilter || 
-                hairSearchQuery != lastHairSearch || beardSearchQuery != lastBeardSearch || apparelSearchQuery != lastApparelSearch)
+                hairSearchQuery != lastHairSearch || beardSearchQuery != lastBeardSearch || apparelSearchQuery != lastApparelSearch || headSearchQuery != lastHeadSearch ||
+                selectedRaceDefName != lastRaceDefName)
             {
                 RebuildFilterCache();
                 lastActiveTab = activeTab; lastModFilter = selectedModName;
-                lastHairSearch = hairSearchQuery; lastBeardSearch = beardSearchQuery; lastApparelSearch = apparelSearchQuery;
+                lastHairSearch = hairSearchQuery; lastBeardSearch = beardSearchQuery; lastApparelSearch = apparelSearchQuery; lastHeadSearch = headSearchQuery;
+                lastRaceDefName = selectedRaceDefName;
                 cacheInitialized = true;
             }
 
             // --- HEADER: DASHBOARD CARD ---
-            float headerHeight = Settings.adjustGenderRatio ? 72f : 44f;
+            float headerHeight = 110f; // Fixed height supporting better titles & 2x2 layout
             Rect headerCard = new Rect(inRect.x, inRect.y, inRect.width, headerHeight);
             Widgets.DrawRectFast(headerCard, CardBgColor);
 
-            // Row 1: Primary Controls
-            float curX = headerCard.x + 12f;
-            float curY = headerCard.y + 10f;
-
-            // Profile Badge
-            string profileLabel = "NPCStyleLimiter_ProfileLabel".Translate() + ": ";
-            string profileName = Settings.currentProfileName ?? "Default";
-            float labelWidth = Text.CalcSize(profileLabel).x;
-            float nameWidth = Text.CalcSize(profileName).x;
-            
-            Rect profileBadge = new Rect(headerCard.xMax - labelWidth - nameWidth - 12f, curY, labelWidth + nameWidth, 24f);
+            // 1. Title and Subtitle (Left Area)
             Text.Anchor = TextAnchor.MiddleLeft;
-            GUI.color = InactiveTextColor;
-            Widgets.Label(new Rect(profileBadge.x, profileBadge.y, labelWidth, 24f), profileLabel);
+            Text.Font = GameFont.Medium;
             GUI.color = AccentColor;
-            Widgets.Label(new Rect(profileBadge.x + labelWidth, profileBadge.y, nameWidth, 24f), profileName);
+            string titleText = isGlobal ? "NPCStyleLimiter_GlobalConfig".Translate().ToString() : "";
+            string subText = isGlobal ? "NPCStyleLimiter_GlobalConfigSub".Translate().ToString() : "";
+
+            if (!isGlobal)
+            {
+                var raceDef = allRaces?.FirstOrDefault(r => r.defName == selectedRaceDefName);
+                if (raceDef != null)
+                {
+                    titleText = raceDef.LabelCap;
+                    if (raceDef.defName != "Human" && (raceDef.label == "Human" || raceDef.label == "人类" || raceDef.defName == "CreepJoiner"))
+                    {
+                        titleText += " (" + raceDef.defName + ")";
+                    }
+                    subText = "(" + selectedRaceDefName + ")";
+                }
+                else
+                {
+                    titleText = selectedRaceDefName;
+                    subText = "";
+                }
+            }
+
+            Widgets.Label(new Rect(headerCard.x + 16f, headerCard.y + 20f, 160f, 30f), titleText);
+            
+            Text.Font = GameFont.Tiny;
+            GUI.color = InactiveTextColor;
+            Widgets.Label(new Rect(headerCard.x + 16f, headerCard.y + 54f, 160f, 40f), subText);
+            
+            Text.Font = GameFont.Small;
             GUI.color = Color.white;
             Text.Anchor = TextAnchor.UpperLeft;
 
-            // Gender Config Toggle
-            Rect checkRect = new Rect(curX, curY, 160f, 24f);
-            bool useGender = Settings.useGenderConfig;
-            Widgets.CheckboxLabeled(checkRect, "NPCStyleLimiter_UseGenderConfig".Translate(), ref useGender);
-            if (useGender != Settings.useGenderConfig) 
+            // 2. 2x2 Control Grid (Right Area)
+            float rightAreaX = headerCard.x + 190f;
+            float rightWidth = headerCard.width - 206f; // Margin on right
+            
+            float col1X = rightAreaX;
+            float col2X = rightAreaX + 195f;
+            
+            float row1Y = headerCard.y + 22f;
+            float row2Y = headerCard.y + 62f;
+
+            // Row 1, Col 1: useSpecificConfig or applyToPlayerPawns
+            if (!isGlobal)
             {
-                Settings.useGenderConfig = useGender;
+                Rect specificRect = new Rect(col1X, row1Y, 185f, 24f);
+                bool specific = raceSettings.useSpecificConfig;
+                bool nextSpecific = DrawCustomLabeledCheckbox(specificRect, "NPCStyleLimiter_UseSpecificConfig".Translate(), specific);
+                if (nextSpecific != specific)
+                {
+                    raceSettings.useSpecificConfig = nextSpecific;
+                    Settings.ResolveRuntimeWeights();
+                }
+            }
+            else
+            {
+                Rect applyPlayerRect = new Rect(col1X, row1Y, 185f, 24f);
+                bool applyPlayer = Settings.applyToPlayerPawns;
+                bool nextApplyPlayer = DrawCustomLabeledCheckbox(applyPlayerRect, "NPCStyleLimiter_ApplyToPlayerPawns".Translate(), applyPlayer);
+                if (nextApplyPlayer != applyPlayer) Settings.applyToPlayerPawns = nextApplyPlayer;
+            }
+
+            // Row 1, Col 2: useGenderConfig & gender tabs
+            Rect genderRect = new Rect(col2X, row1Y, 135f, 24f);
+            bool useGender = raceSettings.useGenderConfig;
+            bool nextUseGender = DrawCustomLabeledCheckbox(genderRect, "NPCStyleLimiter_UseGenderConfig".Translate(), useGender);
+            if (nextUseGender != useGender) 
+            {
+                raceSettings.useGenderConfig = nextUseGender;
                 Settings.ResolveRuntimeWeights();
             }
-            curX += 170f;
 
-            if (Settings.useGenderConfig)
+            if (raceSettings.useGenderConfig)
             {
-                Rect maleBtn = new Rect(curX, curY, 60f, 24f);
-                Rect femaleBtn = new Rect(maleBtn.xMax + 4f, curY, 60f, 24f);
+                float genderBtnStartX = col2X + 137f;
+                Rect maleBtn = new Rect(genderBtnStartX, row1Y, 45f, 24f);
+                Rect femaleBtn = new Rect(maleBtn.xMax + 4f, row1Y, 45f, 24f);
                 if (Widgets.ButtonText(maleBtn, "NPCStyleLimiter_Male".Translate(), editingGender == Gender.Male, true, true)) editingGender = Gender.Male;
                 if (Widgets.ButtonText(femaleBtn, "NPCStyleLimiter_Female".Translate(), editingGender == Gender.Female, true, true)) editingGender = Gender.Female;
-                curX = femaleBtn.xMax + 15f;
             }
 
-            // Gender Ratio Toggle
-            Rect ratioToggleRect = new Rect(curX, curY, 150f, 24f);
-            bool adjRatio = Settings.adjustGenderRatio;
-            Widgets.CheckboxLabeled(ratioToggleRect, "NPCStyleLimiter_AdjustGenderRatio".Translate(), ref adjRatio);
-            if (adjRatio != Settings.adjustGenderRatio) Settings.adjustGenderRatio = adjRatio;
-            curX += 160f;
+            // Row 2, Col 1: adjustGenderRatio
+            Rect ratioToggleRect = new Rect(col1X, row2Y, 185f, 24f);
+            bool adjRatio = raceSettings.adjustGenderRatio;
+            bool nextAdjRatio = DrawCustomLabeledCheckbox(ratioToggleRect, "NPCStyleLimiter_AdjustGenderRatio".Translate(), adjRatio);
+            if (nextAdjRatio != adjRatio) raceSettings.adjustGenderRatio = nextAdjRatio;
 
-            // Apply to Player Pawns Toggle
-            Rect applyPlayerRect = new Rect(curX, curY, 180f, 24f);
-            bool applyPlayer = Settings.applyToPlayerPawns;
-            Widgets.CheckboxLabeled(applyPlayerRect, "NPCStyleLimiter_ApplyToPlayerPawns".Translate(), ref applyPlayer);
-            if (applyPlayer != Settings.applyToPlayerPawns) Settings.applyToPlayerPawns = applyPlayer;
-            curX += 190f;
-
-            // Debug Mode Toggle
-            Rect debugRect = new Rect(curX, curY, 100f, 24f);
-            Widgets.CheckboxLabeled(debugRect, "DEBUG", ref Settings.debugMode);
-
-            // Row 2: Ratio Slider
-            if (Settings.adjustGenderRatio)
+            // Row 2, Col 2: maleRatio slider (if adjustGenderRatio active)
+            if (raceSettings.adjustGenderRatio)
             {
-                curY += 28f;
+                Rect sliderRect = new Rect(col2X, row2Y + 2f, 100f, 20f);
+                float newRatio = DrawCustomSlider(sliderRect, raceSettings.maleRatio, 0f, 1f, 0.01f);
+                if (newRatio != raceSettings.maleRatio) raceSettings.maleRatio = newRatio;
+                
+                Rect valLabel = new Rect(sliderRect.xMax + 8f, row2Y, rightWidth - (col2X - col1X) - 108f, 24f);
                 Text.Anchor = TextAnchor.MiddleLeft;
-                
-                Rect sliderRect = new Rect(headerCard.x + 12f, curY, 200f, 24f);
-                float newRatio = DrawCustomSlider(sliderRect, Settings.maleRatio, 0f, 1f, 0.01f);
-                if (newRatio != Settings.maleRatio) Settings.maleRatio = newRatio;
-                
-                Rect valLabel = new Rect(sliderRect.xMax + 15f, curY, 150f, 24f);
-                Widgets.Label(valLabel, "NPCStyleLimiter_MaleRatioLabel".Translate(Settings.maleRatio.ToString("P0"), (1f - Settings.maleRatio).ToString("P0")));
+                Text.Font = GameFont.Tiny;
+                Widgets.Label(valLabel, "NPCStyleLimiter_MaleRatioLabel".Translate(raceSettings.maleRatio.ToString("P0"), (1f - raceSettings.maleRatio).ToString("P0")));
+                Text.Font = GameFont.Small;
                 Text.Anchor = TextAnchor.UpperLeft;
             }
 
+            // Inherited state handling (if not global and specific config is disabled)
+            if (!isGlobal && !raceSettings.useSpecificConfig)
+            {
+                float inheritedContentY = headerCard.yMax + 12f;
+                Rect infoRect = new Rect(inRect.x, inheritedContentY + 30f, inRect.width, 100f);
+                Text.Anchor = TextAnchor.MiddleCenter;
+                GUI.color = InactiveTextColor;
+                Widgets.Label(infoRect, "NPCStyleLimiter_InheritingGlobal".Translate());
+                if (Widgets.ButtonText(new Rect(inRect.x + (inRect.width - 200f) / 2f, infoRect.yMax, 200f, 32f), "NPCStyleLimiter_CopyFromGlobal".Translate()))
+                {
+                    CopyGlobalToSpecific(raceSettings);
+                }
+                GUI.color = Color.white;
+                Text.Anchor = TextAnchor.UpperLeft;
+                return;
+            }
+
             // --- TABS ---
-            curY = headerCard.yMax + 12f;
+            float curY = headerCard.yMax + 12f;
             Rect tabsRect = new Rect(inRect.x, curY, inRect.width, 38f);
-            float tW = tabsRect.width / 4f;
+            float tW = tabsRect.width / 5f;
             if (DrawModernTab(new Rect(tabsRect.x, curY, tW, 38f), "NPCStyleLimiter_HairStyles".Translate(), activeTab == 0)) activeTab = 0;
             if (DrawModernTab(new Rect(tabsRect.x + tW, curY, tW, 38f), "NPCStyleLimiter_BeardStyles".Translate(), activeTab == 1)) activeTab = 1;
             if (DrawModernTab(new Rect(tabsRect.x + tW * 2, curY, tW, 38f), "NPCStyleLimiter_Apparel".Translate(), activeTab == 2)) activeTab = 2;
-            if (DrawModernTab(new Rect(tabsRect.x + tW * 3, curY, tW, 38f), "NPCStyleLimiter_BodyTypes".Translate(), activeTab == 3)) activeTab = 3;
+            if (DrawModernTab(new Rect(tabsRect.x + tW * 3, curY, tW, 38f), "NPCStyleLimiter_HeadTypes".Translate(), activeTab == 3)) activeTab = 3;
+            if (DrawModernTab(new Rect(tabsRect.x + tW * 4, curY, tW, 38f), "NPCStyleLimiter_BodyTypes".Translate(), activeTab == 4)) activeTab = 4;
 
             // --- FILTER BAR ---
             curY = tabsRect.yMax + 10f;
-            if (activeTab != 3)
+            if (activeTab != 4)
             {
                 Rect filterBar = new Rect(inRect.x, curY, inRect.width, 40f);
                 Widgets.DrawRectFast(filterBar, PanelBgColor);
                 
                 Rect searchRect = new Rect(filterBar.x + 10f, filterBar.y + 6f, 180f, 28f);
-                string s = (activeTab == 0) ? hairSearchQuery : (activeTab == 1 ? beardSearchQuery : apparelSearchQuery);
+                string s = (activeTab == 0) ? hairSearchQuery : (activeTab == 1 ? beardSearchQuery : (activeTab == 2 ? apparelSearchQuery : headSearchQuery));
                 string ns = Widgets.TextField(searchRect, s);
-                if (activeTab == 0) hairSearchQuery = ns; else if (activeTab == 1) beardSearchQuery = ns; else apparelSearchQuery = ns;
+                if (activeTab == 0) hairSearchQuery = ns; else if (activeTab == 1) beardSearchQuery = ns; else if (activeTab == 2) apparelSearchQuery = ns; else headSearchQuery = ns;
 
                 Rect modBtn = new Rect(searchRect.xMax + 10f, filterBar.y + 6f, 150f, 28f);
                 string modLabel = selectedModName == "All" ? "NPCStyleLimiter_AllMods".Translate().ToString() : selectedModName;
@@ -215,17 +417,30 @@ namespace NPCStyleLimiter
                 {
                     List<FloatMenuOption> opts = new List<FloatMenuOption> { new FloatMenuOption("NPCStyleLimiter_AllMods".Translate(), () => selectedModName = "All") };
                     HashSet<string> mods = new HashSet<string>();
-                    if (activeTab == 0) foreach (var hd in DefDatabase<HairDef>.AllDefsListForReading) if (hd != null) mods.Add(hd.modContentPack?.Name ?? "Core");
-                    else if (activeTab == 1) foreach (var bd in DefDatabase<BeardDef>.AllDefsListForReading) if (bd != null) mods.Add(bd.modContentPack?.Name ?? "Core");
-                    else if (activeTab == 2) foreach (var td in DefDatabase<ThingDef>.AllDefsListForReading) if (td != null && td.IsApparel) mods.Add(td.modContentPack?.Name ?? "Core");
+                    if (activeTab == 0)
+                    {
+                        foreach (var hd in DefDatabase<HairDef>.AllDefsListForReading) if (hd != null) mods.Add(hd.modContentPack?.Name ?? "Core");
+                    }
+                    else if (activeTab == 1)
+                    {
+                        foreach (var bd in DefDatabase<BeardDef>.AllDefsListForReading) if (bd != null) mods.Add(bd.modContentPack?.Name ?? "Core");
+                    }
+                    else if (activeTab == 2)
+                    {
+                        foreach (var td in DefDatabase<ThingDef>.AllDefsListForReading) if (td != null && td.IsApparel) mods.Add(td.modContentPack?.Name ?? "Core");
+                    }
+                    else if (activeTab == 3)
+                    {
+                        foreach (var hd in DefDatabase<HeadTypeDef>.AllDefsListForReading) if (hd != null) mods.Add(hd.modContentPack?.Name ?? "Core");
+                    }
                     foreach (var m in mods.OrderBy(x => x)) opts.Add(new FloatMenuOption(m, () => selectedModName = m));
                     Find.WindowStack.Add(new FloatMenu(opts));
                 }
 
                 Rect bulkAllow = new Rect(filterBar.xMax - 180f, filterBar.y + 6f, 85f, 28f);
                 Rect bulkBlock = new Rect(bulkAllow.xMax + 4f, filterBar.y + 6f, 85f, 28f);
-                if (Widgets.ButtonText(bulkAllow, "NPCStyleLimiter_AllowAll".Translate())) foreach (var cdef in cachedFilteredDefs) Settings.SetWeight(cdef, activeGender, 1.0f);
-                if (Widgets.ButtonText(bulkBlock, "NPCStyleLimiter_BlockAll".Translate())) foreach (var cdef in cachedFilteredDefs) Settings.SetWeight(cdef, activeGender, 0.0f);
+                if (Widgets.ButtonText(bulkAllow, "NPCStyleLimiter_AllowAll".Translate())) foreach (var cdef in cachedFilteredDefs) Settings.SetWeight(cdef, activeGender, 1.0f, selectedRaceDefName);
+                if (Widgets.ButtonText(bulkBlock, "NPCStyleLimiter_BlockAll".Translate())) foreach (var cdef in cachedFilteredDefs) Settings.SetWeight(cdef, activeGender, 0.0f, selectedRaceDefName);
                 
                 curY = filterBar.yMax + 5f;
             }
@@ -233,11 +448,24 @@ namespace NPCStyleLimiter
             // --- MAIN LIST ---
             DrawModernList(cachedFilteredDefs, curY, inRect, activeGender);
 
-            // --- BOTTOM BAR ---
-            Rect bottomBar = new Rect(inRect.x, inRect.yMax - 40f, inRect.width, 40f);
+            // --- BOTTOM CONFIG BUTTONS ---
+            Rect bottomBar = new Rect(inRect.x, inRect.yMax - 36f, inRect.width, 36f);
             float bW = (bottomBar.width - 6f) / 2f;
-            if (Widgets.ButtonText(new Rect(bottomBar.x, bottomBar.y + 5f, bW, 32f), "NPCStyleLimiter_SaveProfile".Translate())) Find.WindowStack.Add(new Dialog_ManageConfigs(true));
-            if (Widgets.ButtonText(new Rect(bottomBar.xMax - bW, bottomBar.y + 5f, bW, 32f), "NPCStyleLimiter_LoadManageProfiles".Translate())) Find.WindowStack.Add(new Dialog_ManageConfigs());
+            if (Widgets.ButtonText(new Rect(bottomBar.x, bottomBar.y + 2f, bW, 32f), "NPCStyleLimiter_SaveProfile".Translate())) Find.WindowStack.Add(new Dialog_ManageConfigs(true));
+            if (Widgets.ButtonText(new Rect(bottomBar.xMax - bW, bottomBar.y + 2f, bW, 32f), "NPCStyleLimiter_LoadManageProfiles".Translate())) Find.WindowStack.Add(new Dialog_ManageConfigs());
+        }
+
+        private void CopyGlobalToSpecific(RaceSettings s)
+        {
+            var g = Settings.GlobalSettings;
+            s.useSpecificConfig = true;
+            s.useGenderConfig = g.useGenderConfig;
+            s.adjustGenderRatio = g.adjustGenderRatio;
+            s.maleRatio = g.maleRatio;
+            s.weights = new Dictionary<string, float>(g.weights);
+            s.weightsMale = new Dictionary<string, float>(g.weightsMale);
+            s.weightsFemale = new Dictionary<string, float>(g.weightsFemale);
+            Settings.ResolveRuntimeWeights();
         }
 
         private void DrawModernList(List<Def> defs, float y, Rect inRect, Gender gender)
@@ -262,15 +490,15 @@ namespace NPCStyleLimiter
                 if (Mouse.IsOver(row)) Widgets.DrawRectFast(row, HoverRowColor);
                 else if (i % 2 == 1) Widgets.DrawLightHighlight(row);
 
-                float w = Settings.GetWeight(d, gender);
+                float w = Settings.GetWeight(d, gender, selectedRaceDefName);
                 
                 // Toggle
                 Rect tRect = new Rect(8f, row.y + (rH - 20f) / 2f, 36f, 20f);
                 bool active = DrawCustomCheckbox(tRect, w > 0f);
-                if (active != (w > 0f)) Settings.SetWeight(d, gender, active ? 1.0f : 0.0f);
+                if (active != (w > 0f)) Settings.SetWeight(d, gender, active ? 1.0f : 0.0f, selectedRaceDefName);
 
                 // Icon
-                Texture2D tex = (d is StyleItemDef s) ? s.Icon : (d is ThingDef t ? t.uiIcon : null);
+                Texture2D tex = (d is StyleItemDef s) ? s.Icon : (d is ThingDef t ? t.uiIcon : (d is HeadTypeDef ht ? ht.Icon : null));
                 if (tex != null) {
                     GUI.color = (d is ThingDef t2) ? t2.uiIconColor : Color.white;
                     Widgets.DrawTextureFitted(new Rect(50f, row.y + 5f, 30f, 30f), tex, 1f);
@@ -280,13 +508,13 @@ namespace NPCStyleLimiter
                 // Label
                 Text.Anchor = TextAnchor.MiddleLeft;
                 string label = d.LabelCap.NullOrEmpty() ? d.defName : (string)d.LabelCap;
-                if (Settings.debugMode) label += " [" + d.defName + "]";
+                if ((Settings.debugMode || Prefs.DevMode) && !(d is HeadTypeDef) && !(d is BodyTypeDef)) label += " [" + d.defName + "]";
                 Widgets.Label(new Rect(90f, row.y, view.width * 0.45f, rH), label);
                 
                 // Weight Slider
                 Rect sRect = new Rect(view.width * 0.55f, row.y + (rH - 24f) / 2f, 120f, 24f);
                 float nw = DrawCustomSlider(sRect, w, 0f, 5f, 0.1f);
-                if (nw != w) Settings.SetWeight(d, gender, nw);
+                if (nw != w) Settings.SetWeight(d, gender, nw, selectedRaceDefName);
                 
                 Widgets.Label(new Rect(sRect.xMax + 8f, row.y, 40f, rH), nw.ToString("0.0") + "x");
                 
@@ -350,6 +578,184 @@ namespace NPCStyleLimiter
             Widgets.DrawRectFast(kR, Color.white);
             return Widgets.ButtonInvisible(rect) ? !active : active;
         }
+
+        private bool DrawCustomLabeledCheckbox(Rect rect, string label, bool active)
+        {
+            Rect tRect = new Rect(rect.x, rect.y + (rect.height - 20f) / 2f, 36f, 20f);
+            bool nextState = DrawCustomCheckbox(tRect, active);
+            Text.Anchor = TextAnchor.MiddleLeft;
+            var oldFont = Text.Font;
+            Text.Font = GameFont.Tiny;
+            Widgets.Label(new Rect(tRect.xMax + 8f, rect.y, rect.width - 44f, rect.height), label);
+            Text.Font = oldFont;
+            Text.Anchor = TextAnchor.UpperLeft;
+            return nextState;
+        }
+
+        private void DrawHomeContent(Rect inRect)
+        {
+            // banner Card
+            float bannerHeight = 75f;
+            Rect bannerCard = new Rect(inRect.x, inRect.y, inRect.width, bannerHeight);
+            Widgets.DrawRectFast(bannerCard, CardBgColor);
+            Widgets.DrawRectFast(new Rect(bannerCard.x, bannerCard.yMax - 2f, bannerCard.width, 2f), AccentColor);
+
+            // Title inside banner
+            Text.Anchor = TextAnchor.MiddleLeft;
+            Text.Font = GameFont.Medium;
+            GUI.color = AccentColor;
+            Widgets.Label(new Rect(bannerCard.x + 16f, bannerCard.y + 12f, bannerCard.width - 32f, 30f), "NPC Style Limiter");
+            
+            Text.Font = GameFont.Tiny;
+            GUI.color = InactiveTextColor;
+            Widgets.Label(new Rect(bannerCard.x + 16f, bannerCard.y + 42f, bannerCard.width - 32f, 24f), "NPCStyleLimiter_HomeSubTitle".Translate());
+            Text.Font = GameFont.Small;
+            GUI.color = Color.white;
+            Text.Anchor = TextAnchor.UpperLeft;
+
+            // Scrollable Content
+            Rect outRect = new Rect(inRect.x, bannerCard.yMax + 10f, inRect.width, inRect.height - bannerHeight - 25f);
+            
+            // Calculate card heights dynamically to prevent text truncation at different resolutions/languages
+            float cardWidth = outRect.width - 16f;
+            
+            // 1. Calculate Guide Card Height
+            float guideHeaderHeight = 36f; // 10f top padding + 26f header
+            float guideBulletPadding = 6f; // spacing between bullet items
+            float guideInnerWidth = cardWidth - 36f; // 20f left padding + 16f right padding
+            
+            Text.Font = GameFont.Small;
+            float g1Height = Text.CalcHeight("NPCStyleLimiter_HomeGuide1".Translate(), guideInnerWidth - 16f);
+            float g2Height = Text.CalcHeight("NPCStyleLimiter_HomeGuide2".Translate(), guideInnerWidth - 16f);
+            float g3Height = Text.CalcHeight("NPCStyleLimiter_HomeGuide3".Translate(), guideInnerWidth - 16f);
+            float g4Height = Text.CalcHeight("NPCStyleLimiter_HomeGuide4".Translate(), guideInnerWidth - 16f);
+            float g5Height = Text.CalcHeight("NPCStyleLimiter_HomeGuide5".Translate(), guideInnerWidth - 16f);
+            
+            float guideCardHeight = guideHeaderHeight + g1Height + g2Height + g3Height + g4Height + g5Height + (guideBulletPadding * 4) + 16f; // 16f bottom padding
+            
+            // 2. Calculate Limit Card Height
+            string limitText = "NPCStyleLimiter_HomeLimitDesc".Translate();
+            float limitTextWidth = cardWidth - 36f;
+            float limitTextHeight = Text.CalcHeight(limitText, limitTextWidth);
+            float limitCardHeight = 36f + limitTextHeight + 16f; // header + text + bottom padding
+            
+            // 3. Calculate Safety Card Height
+            string safetyText = "NPCStyleLimiter_HomeSafetyDesc".Translate();
+            float safetyTextWidth = cardWidth - 36f;
+            float safetyTextHeight = Text.CalcHeight(safetyText, safetyTextWidth);
+            float safetyCardHeight = 36f + safetyTextHeight + 16f;
+            
+            // 4. Calculate Alien Card Height
+            string alienText = "NPCStyleLimiter_HomeAlienDesc".Translate();
+            float alienTextWidth = cardWidth - 36f;
+            float alienTextHeight = Text.CalcHeight(alienText, alienTextWidth);
+            float alienCardHeight = 36f + alienTextHeight + 16f;
+            
+            // Total height of the scroll content
+            float spaceBetweenCards = 12f;
+            float totalHeight = guideCardHeight + spaceBetweenCards 
+                                + limitCardHeight + spaceBetweenCards 
+                                + safetyCardHeight + spaceBetweenCards 
+                                + alienCardHeight + 35f; // extra space for footer copyright
+            
+            Rect viewRect = new Rect(0, 0, cardWidth, totalHeight);
+            Widgets.BeginScrollView(outRect, ref homeScrollPos, viewRect);
+
+            float curY = 0f;
+
+            // Section 1: Guide
+            Rect guideCard = new Rect(0, curY, cardWidth, guideCardHeight);
+            Widgets.DrawRectFast(guideCard, PanelBgColor);
+            Widgets.DrawRectFast(new Rect(guideCard.x, guideCard.y, 3f, guideCard.height), AccentColor);
+            DrawSectionHeader(guideCard.x + 16f, guideCard.y + 10f, "NPCStyleLimiter_HomeGuideTitle".Translate(), AccentColor);
+            
+            float textY = guideCard.y + 36f;
+            textY += DrawBulletPoint(guideCard.x + 20f, textY, guideInnerWidth, "NPCStyleLimiter_HomeGuide1".Translate()) + guideBulletPadding;
+            textY += DrawBulletPoint(guideCard.x + 20f, textY, guideInnerWidth, "NPCStyleLimiter_HomeGuide2".Translate()) + guideBulletPadding;
+            textY += DrawBulletPoint(guideCard.x + 20f, textY, guideInnerWidth, "NPCStyleLimiter_HomeGuide3".Translate()) + guideBulletPadding;
+            textY += DrawBulletPoint(guideCard.x + 20f, textY, guideInnerWidth, "NPCStyleLimiter_HomeGuide4".Translate()) + guideBulletPadding;
+            DrawBulletPoint(guideCard.x + 20f, textY, guideInnerWidth, "NPCStyleLimiter_HomeGuide5".Translate());
+            
+            curY += guideCardHeight + spaceBetweenCards;
+
+            // Section 2: Limitations (Zero-Weight)
+            Rect limitCard = new Rect(0, curY, cardWidth, limitCardHeight);
+            Widgets.DrawRectFast(limitCard, PanelBgColor);
+            Color orangeRed = new Color(0.88f, 0.35f, 0.15f);
+            Widgets.DrawRectFast(new Rect(limitCard.x, limitCard.y, 3f, limitCard.height), orangeRed);
+            DrawSectionHeader(limitCard.x + 16f, limitCard.y + 10f, "⚠️ " + "NPCStyleLimiter_HomeLimitTitle".Translate(), orangeRed);
+            
+            float limitTextY = limitCard.y + 36f;
+            Rect limitTextRect = new Rect(limitCard.x + 20f, limitTextY, limitTextWidth, limitTextHeight);
+            Text.Font = GameFont.Small;
+            GUI.color = new Color(0.9f, 0.85f, 0.75f);
+            Widgets.Label(limitTextRect, limitText);
+            GUI.color = Color.white;
+
+            curY += limitCardHeight + spaceBetweenCards;
+
+            // Section 3: Safety valve
+            Rect safetyCard = new Rect(0, curY, cardWidth, safetyCardHeight);
+            Widgets.DrawRectFast(safetyCard, PanelBgColor);
+            Color softGreen = new Color(0.2f, 0.7f, 0.35f);
+            Widgets.DrawRectFast(new Rect(safetyCard.x, safetyCard.y, 3f, safetyCard.height), softGreen);
+            DrawSectionHeader(safetyCard.x + 16f, safetyCard.y + 10f, "🛡️ " + "NPCStyleLimiter_HomeSafetyTitle".Translate(), softGreen);
+
+            float safetyTextY = safetyCard.y + 36f;
+            Rect safetyTextRect = new Rect(safetyCard.x + 20f, safetyTextY, safetyTextWidth, safetyTextHeight);
+            GUI.color = new Color(0.8f, 0.9f, 0.8f);
+            Widgets.Label(safetyTextRect, safetyText);
+            GUI.color = Color.white;
+
+            curY += safetyCardHeight + spaceBetweenCards;
+
+            // Section 4: Alien Spawning limitations
+            Rect alienCard = new Rect(0, curY, cardWidth, alienCardHeight);
+            Widgets.DrawRectFast(alienCard, PanelBgColor);
+            Color softPurple = new Color(0.7f, 0.45f, 0.85f);
+            Widgets.DrawRectFast(new Rect(alienCard.x, alienCard.y, 3f, alienCard.height), softPurple);
+            DrawSectionHeader(alienCard.x + 16f, alienCard.y + 10f, "NPCStyleLimiter_HomeAlienTitle".Translate(), softPurple);
+
+            float alienTextY = alienCard.y + 36f;
+            Rect alienTextRect = new Rect(alienCard.x + 20f, alienTextY, alienTextWidth, alienTextHeight);
+            GUI.color = new Color(0.85f, 0.8f, 0.9f);
+            Widgets.Label(alienTextRect, alienText);
+            GUI.color = Color.white;
+
+            // Section 5: Footer Copyright
+            float footerY = alienCard.yMax + 12f;
+            Rect footerRect = new Rect(0, footerY, cardWidth, 24f);
+            Text.Anchor = TextAnchor.MiddleCenter;
+            Text.Font = GameFont.Tiny;
+            GUI.color = InactiveTextColor;
+            Widgets.Label(footerRect, "NPC Style Limiter v1.3.1 | Copyright (c) 2026 rinmiolc | Licensed under GPL v3.0");
+            GUI.color = Color.white;
+            Text.Font = GameFont.Small;
+            Text.Anchor = TextAnchor.UpperLeft;
+
+            Widgets.EndScrollView();
+        }
+
+        private void DrawSectionHeader(float x, float y, string title, Color color)
+        {
+            Text.Font = GameFont.Medium;
+            GUI.color = color;
+            Widgets.Label(new Rect(x, y, 400f, 28f), title);
+            GUI.color = Color.white;
+            Text.Font = GameFont.Small;
+        }
+
+        private float DrawBulletPoint(float x, float y, float width, string text)
+        {
+            Text.Font = GameFont.Small;
+            float textWidth = width - 16f;
+            float textHeight = Text.CalcHeight(text, textWidth);
+            GUI.color = AccentColor;
+            Widgets.Label(new Rect(x, y, 16f, textHeight), "•");
+            GUI.color = Color.white;
+            Widgets.Label(new Rect(x + 16f, y, textWidth, textHeight), text);
+            return textHeight;
+        }
     }
 
     [StaticConstructorOnStartup]
@@ -358,6 +764,7 @@ namespace NPCStyleLimiter
         static ModStartup()
         {
             new Harmony("rinmiolc.npcstylelimiter").PatchAll();
+            CustomizerSettings.InitializeDefCounts();
             if (CustomizerMod.Settings != null) CustomizerMod.Settings.ResolveRuntimeWeights();
         }
     }
