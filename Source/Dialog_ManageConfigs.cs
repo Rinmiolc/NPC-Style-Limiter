@@ -21,12 +21,23 @@ namespace NPCStyleLimiter
         private string renameTarget = null;
         private bool focusSaveField = false;
 
+        private List<string> cachedProfiles = null;
+
         // Modern UI Theme Colors
         private static readonly Color AccentColor = new Color(0.78f, 0.55f, 0.15f);
         private static readonly Color PanelBgColor = new Color(1f, 1f, 1f, 0.03f);
         private static readonly Color HoverRowColor = new Color(1f, 1f, 1f, 0.05f);
         private static readonly Color InactiveTextColor = new Color(0.55f, 0.6f, 0.62f);
         private static readonly Color CardBgColor = new Color(0f, 0f, 0f, 0.15f);
+
+        private void RefreshProfilesCache()
+        {
+            cachedProfiles = CustomizerMod.Settings.ListProfiles();
+            if (!cachedProfiles.Any(p => p.Equals("Default", StringComparison.OrdinalIgnoreCase)))
+            {
+                cachedProfiles.Insert(0, "Default");
+            }
+        }
 
         public Dialog_ManageConfigs(bool focusSave = false)
         {
@@ -36,6 +47,8 @@ namespace NPCStyleLimiter
             absorbInputAroundWindow = true;
             closeOnClickedOutside = true;
             draggable = true;
+
+            RefreshProfilesCache();
         }
 
         public override void DoWindowContents(Rect inRect)
@@ -96,8 +109,8 @@ namespace NPCStyleLimiter
             curY = saveCard.yMax + 15f;
 
             // 3. Profile List Section
-            List<string> profiles = CustomizerMod.Settings.ListProfiles();
-            if (!profiles.Any(p => p.Equals("Default", StringComparison.OrdinalIgnoreCase))) profiles.Insert(0, "Default");
+            if (cachedProfiles == null) RefreshProfilesCache();
+            List<string> profiles = cachedProfiles;
 
             float listHeaderY = curY;
             Widgets.Label(new Rect(inRect.x + 5f, listHeaderY, 200f, 24f), "NPCStyleLimiter_StoredProfiles".Translate());
@@ -196,6 +209,7 @@ namespace NPCStyleLimiter
                 {
                     Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation("ConfirmDelete".Translate(name), () => {
                         CustomizerMod.Settings.DeleteProfile(name);
+                        RefreshProfilesCache();
                     }, true));
                 }
                 GUI.color = Color.white;
@@ -219,9 +233,23 @@ namespace NPCStyleLimiter
             if (Widgets.ButtonText(new Rect(rect.x + 28f + fieldW + 6f, rect.y + 4f, btnW, 28f), "NPCStyleLimiter_OK".Translate()))
             {
                 string trim = renameBuffer.Trim();
-                if (!string.IsNullOrEmpty(trim) && trim != originalName)
+                if (!string.IsNullOrEmpty(trim) && !trim.Equals(originalName, StringComparison.Ordinal))
                 {
-                    CustomizerMod.Settings.RenameProfile(originalName, trim);
+                    bool exists = cachedProfiles != null && 
+                                  cachedProfiles.Any(p => p.Equals(trim, StringComparison.OrdinalIgnoreCase) && !p.Equals(originalName, StringComparison.OrdinalIgnoreCase));
+                    if (exists)
+                    {
+                        Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation("NPCStyleLimiter_ConfirmOverwrite".Translate(trim), () =>
+                        {
+                            CustomizerMod.Settings.RenameProfile(originalName, trim);
+                            RefreshProfilesCache();
+                        }));
+                    }
+                    else
+                    {
+                        CustomizerMod.Settings.RenameProfile(originalName, trim);
+                        RefreshProfilesCache();
+                    }
                 }
                 renameTarget = null;
             }
@@ -233,17 +261,19 @@ namespace NPCStyleLimiter
 
         private void DoSave(string name)
         {
-            if (CustomizerMod.Settings.ListProfiles().Contains(name))
+            if (cachedProfiles != null && cachedProfiles.Any(p => p.Equals(name, StringComparison.OrdinalIgnoreCase)))
             {
                 Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation("NPCStyleLimiter_ConfirmOverwrite".Translate(name), () =>
                 {
                     CustomizerMod.Settings.SaveProfile(name);
+                    RefreshProfilesCache();
                     Messages.Message("NPCStyleLimiter_ProfileSaved".Translate(name), MessageTypeDefOf.TaskCompletion, false);
                 }));
             }
             else
             {
                 CustomizerMod.Settings.SaveProfile(name);
+                RefreshProfilesCache();
                 Messages.Message("NPCStyleLimiter_ProfileSaved".Translate(name), MessageTypeDefOf.TaskCompletion, false);
             }
         }

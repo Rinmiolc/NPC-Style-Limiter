@@ -71,17 +71,17 @@ namespace NPCStyleLimiter
  
             if (activeTab == 0)
             {
-                if (allHairs == null) allHairs = DefDatabase<HairDef>.AllDefsListForReading.Where(d => d != null && d.defName != "Bald").OrderBy(d => d.label).ToList();
+                if (allHairs == null) allHairs = DefDatabase<HairDef>.AllDefsListForReading.Where(d => d != null && d.defName != "Bald").OrderBy(d => d.label ?? d.defName).ToList();
                 ApplyFilters(allHairs, search);
             }
             else if (activeTab == 1)
             {
-                if (allBeards == null) allBeards = DefDatabase<BeardDef>.AllDefsListForReading.Where(d => d != null && d.defName != "NoBeard").OrderBy(d => d.label).ToList();
+                if (allBeards == null) allBeards = DefDatabase<BeardDef>.AllDefsListForReading.Where(d => d != null && d.defName != "NoBeard").OrderBy(d => d.label ?? d.defName).ToList();
                 ApplyFilters(allBeards, search);
             }
             else if (activeTab == 2)
             {
-                if (allApparels == null) allApparels = DefDatabase<ThingDef>.AllDefsListForReading.Where(d => d != null && d.IsApparel).OrderBy(d => d.label).ToList();
+                if (allApparels == null) allApparels = DefDatabase<ThingDef>.AllDefsListForReading.Where(d => d != null && d.IsApparel).OrderBy(d => d.label ?? d.defName).ToList();
                 ApplyFilters(allApparels, search);
             }
             else if (activeTab == 3)
@@ -110,28 +110,52 @@ namespace NPCStyleLimiter
             }
         }
 
+        public void ClearUICaches()
+        {
+            allHairs = null;
+            allBeards = null;
+            allApparels = null;
+            allHeads = null;
+            allBodyTypes = null;
+            allRaces = null;
+            cacheInitialized = false;
+            Patch_PawnGenerator_GetBodyTypeFor.ResetBodyTypeCache();
+        }
+
         public override void DoSettingsWindowContents(Rect inRect)
         {
-            Settings.InitializeSets();
-
-            if (allRaces == null)
+            var savedAnchor = Text.Anchor;
+            var savedColor = GUI.color;
+            var savedFont = Text.Font;
+            try
             {
-                allRaces = DefDatabase<ThingDef>.AllDefsListForReading
-                    .Where(d => d.category == ThingCategory.Pawn && d.race != null && d.race.Humanlike)
-                    .OrderBy(d => d.label)
-                    .ToList();
+                Settings.InitializeSets();
+
+                if (allRaces == null)
+                {
+                    allRaces = DefDatabase<ThingDef>.AllDefsListForReading
+                        .Where(d => d.category == ThingCategory.Pawn && d.race != null && d.race.Humanlike)
+                        .OrderBy(d => d.label ?? d.defName)
+                        .ToList();
+                }
+
+                // --- LAYOUT ---
+                float sidebarWidth = 200f;
+                Rect sidebarRect = new Rect(inRect.x, inRect.y, sidebarWidth, inRect.height);
+                Rect contentRect = new Rect(sidebarRect.xMax + 10f, inRect.y, inRect.width - sidebarWidth - 10f, inRect.height);
+
+                // --- SIDEBAR: RACE SELECTOR ---
+                DrawRaceSidebar(sidebarRect);
+
+                // --- CONTENT AREA ---
+                DrawMainContent(contentRect);
             }
-
-            // --- LAYOUT ---
-            float sidebarWidth = 200f;
-            Rect sidebarRect = new Rect(inRect.x, inRect.y, sidebarWidth, inRect.height);
-            Rect contentRect = new Rect(sidebarRect.xMax + 10f, inRect.y, inRect.width - sidebarWidth - 10f, inRect.height);
-
-            // --- SIDEBAR: RACE SELECTOR ---
-            DrawRaceSidebar(sidebarRect);
-
-            // --- CONTENT AREA ---
-            DrawMainContent(contentRect);
+            finally
+            {
+                Text.Anchor = savedAnchor;
+                GUI.color = savedColor;
+                Text.Font = savedFont;
+            }
         }
 
         private void DrawRaceSidebar(Rect rect)
@@ -701,7 +725,7 @@ namespace NPCStyleLimiter
             Text.Anchor = TextAnchor.MiddleCenter;
             Text.Font = GameFont.Tiny;
             GUI.color = InactiveTextColor;
-            Widgets.Label(footerRect, "NPC Style Limiter v1.6 | Copyright (c) 2026 rinmiolc | Licensed under GPL v3.0");
+            Widgets.Label(footerRect, "NPC Style Limiter v1.3.1 | Copyright (c) 2026 rinmiolc | Licensed under GPL v3.0");
             GUI.color = Color.white;
             Text.Font = GameFont.Small;
             Text.Anchor = TextAnchor.UpperLeft;
@@ -737,6 +761,7 @@ namespace NPCStyleLimiter
         static ModStartup()
         {
             new Harmony("rinmiolc.npcstylelimiter").PatchAll();
+            CustomizerSettings.InitializeDefCounts();
             if (CustomizerMod.Settings != null) CustomizerMod.Settings.ResolveRuntimeWeights();
         }
     }

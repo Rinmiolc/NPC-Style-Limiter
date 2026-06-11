@@ -23,10 +23,31 @@ namespace NPCStyleLimiter
         public Dictionary<string, float> weightsMale = new Dictionary<string, float>();
         public Dictionary<string, float> weightsFemale = new Dictionary<string, float>();
 
-        // Runtime caches
-        public readonly float[] fastWeights = new float[CustomizerSettings.MaxFastIndex];
-        public readonly float[] fastWeightsMale = new float[CustomizerSettings.MaxFastIndex];
-        public readonly float[] fastWeightsFemale = new float[CustomizerSettings.MaxFastIndex];
+        // Runtime caches (dynamic sized)
+        public float[] fastHairWeights;
+        public float[] fastHairWeightsMale;
+        public float[] fastHairWeightsFemale;
+
+        public float[] fastBeardWeights;
+        public float[] fastBeardWeightsMale;
+        public float[] fastBeardWeightsFemale;
+
+        public float[] fastApparelWeights;
+        public float[] fastApparelWeightsMale;
+        public float[] fastApparelWeightsFemale;
+
+        public float[] fastHeadWeights;
+        public float[] fastHeadWeightsMale;
+        public float[] fastHeadWeightsFemale;
+
+        public float[] fastBodyWeights;
+        public float[] fastBodyWeightsMale;
+        public float[] fastBodyWeightsFemale;
+
+        // Apparel generation status cache (safety valve)
+        public bool hasAnyApparelEnabled = true;
+        public bool hasAnyApparelEnabledMale = true;
+        public bool hasAnyApparelEnabledFemale = true;
 
         public RaceSettings()
         {
@@ -35,11 +56,42 @@ namespace NPCStyleLimiter
 
         public void ResetCaches()
         {
-            for (int i = 0; i < CustomizerSettings.MaxFastIndex; i++)
+            if (CustomizerSettings.hairDefCount == 0) CustomizerSettings.InitializeDefCounts();
+
+            InitializeArray(ref fastHairWeights, CustomizerSettings.hairDefCount);
+            InitializeArray(ref fastHairWeightsMale, CustomizerSettings.hairDefCount);
+            InitializeArray(ref fastHairWeightsFemale, CustomizerSettings.hairDefCount);
+
+            InitializeArray(ref fastBeardWeights, CustomizerSettings.beardDefCount);
+            InitializeArray(ref fastBeardWeightsMale, CustomizerSettings.beardDefCount);
+            InitializeArray(ref fastBeardWeightsFemale, CustomizerSettings.beardDefCount);
+
+            InitializeArray(ref fastApparelWeights, CustomizerSettings.apparelDefCount);
+            InitializeArray(ref fastApparelWeightsMale, CustomizerSettings.apparelDefCount);
+            InitializeArray(ref fastApparelWeightsFemale, CustomizerSettings.apparelDefCount);
+
+            InitializeArray(ref fastHeadWeights, CustomizerSettings.headDefCount);
+            InitializeArray(ref fastHeadWeightsMale, CustomizerSettings.headDefCount);
+            InitializeArray(ref fastHeadWeightsFemale, CustomizerSettings.headDefCount);
+
+            InitializeArray(ref fastBodyWeights, CustomizerSettings.bodyDefCount);
+            InitializeArray(ref fastBodyWeightsMale, CustomizerSettings.bodyDefCount);
+            InitializeArray(ref fastBodyWeightsFemale, CustomizerSettings.bodyDefCount);
+
+            hasAnyApparelEnabled = true;
+            hasAnyApparelEnabledMale = true;
+            hasAnyApparelEnabledFemale = true;
+        }
+
+        private void InitializeArray(ref float[] arr, int size)
+        {
+            if (arr == null || arr.Length != size)
             {
-                fastWeights[i] = 1f;
-                fastWeightsMale[i] = 1f;
-                fastWeightsFemale[i] = 1f;
+                arr = new float[size];
+            }
+            for (int i = 0; i < size; i++)
+            {
+                arr[i] = 1f;
             }
         }
 
@@ -102,22 +154,20 @@ namespace NPCStyleLimiter
             return s;
         }
 
-        // Fast O(1) lookup constants
-        public const int MaxFastIndex = 524288;
+        // Dynamic Def counts
+        public static int hairDefCount;
+        public static int beardDefCount;
+        public static int apparelDefCount;
+        public static int headDefCount;
+        public static int bodyDefCount;
 
-        public static int GetFastIndex(Def def)
+        public static void InitializeDefCounts()
         {
-            if (def == null) return 0;
-            int typeOffset = 0;
-            if (def is HairDef) typeOffset = 0;
-            else if (def is BeardDef) typeOffset = 16384;
-            else if (def is BodyTypeDef) typeOffset = 32768;
-            else if (def is HeadTypeDef) typeOffset = 49152;
-            else if (def is ThingDef) typeOffset = 65536;
-            
-            int idx = typeOffset + def.index;
-            if (idx >= MaxFastIndex) return 0;
-            return idx;
+            hairDefCount = DefDatabase<HairDef>.DefCount;
+            beardDefCount = DefDatabase<BeardDef>.DefCount;
+            apparelDefCount = DefDatabase<ThingDef>.DefCount;
+            headDefCount = DefDatabase<HeadTypeDef>.DefCount;
+            bodyDefCount = DefDatabase<BodyTypeDef>.DefCount;
         }
 
         // Legacy fields for migration
@@ -182,13 +232,81 @@ namespace NPCStyleLimiter
                 s.ResetCaches();
                 ResolveToCaches(s);
             }
+            CustomizerMod.Instance?.ClearUICaches();
         }
 
         private void ResolveToCaches(RaceSettings s)
         {
-            foreach (var kvp in s.weights) { Def d = FindDef(kvp.Key); if (d != null) s.fastWeights[GetFastIndex(d)] = kvp.Value; }
-            foreach (var kvp in s.weightsMale) { Def d = FindDef(kvp.Key); if (d != null) s.fastWeightsMale[GetFastIndex(d)] = kvp.Value; }
-            foreach (var kvp in s.weightsFemale) { Def d = FindDef(kvp.Key); if (d != null) s.fastWeightsFemale[GetFastIndex(d)] = kvp.Value; }
+            foreach (var kvp in s.weights)
+            {
+                Def d = FindDef(kvp.Key);
+                if (d != null) SetFastWeight(s, d, Gender.None, kvp.Value);
+            }
+            foreach (var kvp in s.weightsMale)
+            {
+                Def d = FindDef(kvp.Key);
+                if (d != null) SetFastWeight(s, d, Gender.Male, kvp.Value);
+            }
+            foreach (var kvp in s.weightsFemale)
+            {
+                Def d = FindDef(kvp.Key);
+                if (d != null) SetFastWeight(s, d, Gender.Female, kvp.Value);
+            }
+
+            RefreshApparelSafetyCache(s);
+        }
+
+        private void SetFastWeight(RaceSettings s, Def d, Gender gender, float val)
+        {
+            int idx = d.index;
+            float[] arr = null;
+
+            if (d is HairDef) arr = (gender == Gender.None) ? s.fastHairWeights : ((gender == Gender.Male) ? s.fastHairWeightsMale : s.fastHairWeightsFemale);
+            else if (d is BeardDef) arr = (gender == Gender.None) ? s.fastBeardWeights : ((gender == Gender.Male) ? s.fastBeardWeightsMale : s.fastBeardWeightsFemale);
+            else if (d is ThingDef) arr = (gender == Gender.None) ? s.fastApparelWeights : ((gender == Gender.Male) ? s.fastApparelWeightsMale : s.fastApparelWeightsFemale);
+            else if (d is HeadTypeDef) arr = (gender == Gender.None) ? s.fastHeadWeights : ((gender == Gender.Male) ? s.fastHeadWeightsMale : s.fastHeadWeightsFemale);
+            else if (d is BodyTypeDef) arr = (gender == Gender.None) ? s.fastBodyWeights : ((gender == Gender.Male) ? s.fastBodyWeightsMale : s.fastBodyWeightsFemale);
+
+            if (arr != null && idx >= 0 && idx < arr.Length)
+            {
+                arr[idx] = val;
+            }
+        }
+
+        private void RefreshApparelSafetyCache(RaceSettings s)
+        {
+            s.hasAnyApparelEnabled = false;
+            s.hasAnyApparelEnabledMale = false;
+            s.hasAnyApparelEnabledFemale = false;
+
+            if (s.fastApparelWeights == null) return;
+
+            var allApparel = DefDatabase<ThingDef>.AllDefsListForReading;
+            int count = allApparel.Count;
+            for (int i = 0; i < count; i++)
+            {
+                if (s.hasAnyApparelEnabled && s.hasAnyApparelEnabledMale && s.hasAnyApparelEnabledFemale)
+                {
+                    break;
+                }
+                var def = allApparel[i];
+                if (def != null && def.IsApparel)
+                {
+                    int idx = def.index;
+                    if (idx >= 0 && idx < s.fastApparelWeights.Length)
+                    {
+                        if (s.fastApparelWeights[idx] > 0f) s.hasAnyApparelEnabled = true;
+                    }
+                    if (s.fastApparelWeightsMale != null && idx >= 0 && idx < s.fastApparelWeightsMale.Length)
+                    {
+                        if (s.fastApparelWeightsMale[idx] > 0f) s.hasAnyApparelEnabledMale = true;
+                    }
+                    if (s.fastApparelWeightsFemale != null && idx >= 0 && idx < s.fastApparelWeightsFemale.Length)
+                    {
+                        if (s.fastApparelWeightsFemale[idx] > 0f) s.hasAnyApparelEnabledFemale = true;
+                    }
+                }
+            }
         }
 
         private bool MigrateLegacyKeys(Dictionary<string, float> dict)
@@ -263,9 +381,36 @@ namespace NPCStyleLimiter
         {
             if (def == null) return 1.0f;
             var s = GetSettingsForRace(raceDefName);
-            int idx = GetFastIndex(def);
-            if (s.useGenderConfig && gender != Gender.None) return (gender == Gender.Female) ? s.fastWeightsFemale[idx] : s.fastWeightsMale[idx];
-            return s.fastWeights[idx];
+            int idx = def.index;
+            
+            float[] arr = null;
+            float[] arrMale = null;
+            float[] arrFemale = null;
+
+            if (def is HairDef) { arr = s.fastHairWeights; arrMale = s.fastHairWeightsMale; arrFemale = s.fastHairWeightsFemale; }
+            else if (def is BeardDef) { arr = s.fastBeardWeights; arrMale = s.fastBeardWeightsMale; arrFemale = s.fastBeardWeightsFemale; }
+            else if (def is ThingDef) { arr = s.fastApparelWeights; arrMale = s.fastApparelWeightsMale; arrFemale = s.fastApparelWeightsFemale; }
+            else if (def is HeadTypeDef) { arr = s.fastHeadWeights; arrMale = s.fastHeadWeightsMale; arrFemale = s.fastHeadWeightsFemale; }
+            else if (def is BodyTypeDef) { arr = s.fastBodyWeights; arrMale = s.fastBodyWeightsMale; arrFemale = s.fastBodyWeightsFemale; }
+
+            if (arr == null || idx < 0 || idx >= arr.Length) return 1.0f;
+
+            if (s.useGenderConfig && gender != Gender.None)
+            {
+                if (gender == Gender.Female) return (arrFemale != null && idx < arrFemale.Length) ? arrFemale[idx] : 1.0f;
+                return (arrMale != null && idx < arrMale.Length) ? arrMale[idx] : 1.0f;
+            }
+            return arr[idx];
+        }
+
+        private float[] GetGenderedFastArray(Def def, Gender gender, RaceSettings s)
+        {
+            if (def is HairDef) return (gender == Gender.None) ? s.fastHairWeights : ((gender == Gender.Male) ? s.fastHairWeightsMale : s.fastHairWeightsFemale);
+            if (def is BeardDef) return (gender == Gender.None) ? s.fastBeardWeights : ((gender == Gender.Male) ? s.fastBeardWeightsMale : s.fastBeardWeightsFemale);
+            if (def is ThingDef) return (gender == Gender.None) ? s.fastApparelWeights : ((gender == Gender.Male) ? s.fastApparelWeightsMale : s.fastApparelWeightsFemale);
+            if (def is HeadTypeDef) return (gender == Gender.None) ? s.fastHeadWeights : ((gender == Gender.Male) ? s.fastHeadWeightsMale : s.fastHeadWeightsFemale);
+            if (def is BodyTypeDef) return (gender == Gender.None) ? s.fastBodyWeights : ((gender == Gender.Male) ? s.fastBodyWeightsMale : s.fastBodyWeightsFemale);
+            return null;
         }
 
         public void SetWeight(Def def, Gender gender, float weight, string raceDefName = null)
@@ -273,17 +418,52 @@ namespace NPCStyleLimiter
             if (def == null) return;
             var s = GetSettingsForRaceRaw(raceDefName);
             string key = GetConfigKey(def);
-            int idx = GetFastIndex(def);
+            int idx = def.index;
 
             if (s.useGenderConfig)
             {
-                if (gender == Gender.Female) { s.weightsFemale[key] = weight; s.fastWeightsFemale[idx] = weight; }
-                else { s.weightsMale[key] = weight; s.fastWeightsMale[idx] = weight; }
+                if (gender == Gender.Female)
+                {
+                    s.weightsFemale[key] = weight;
+                    var arr = GetGenderedFastArray(def, Gender.Female, s);
+                    if (arr == null)
+                    {
+                        s.ResetCaches();
+                        arr = GetGenderedFastArray(def, Gender.Female, s);
+                    }
+                    if (arr != null && idx >= 0 && idx < arr.Length) arr[idx] = weight;
+                }
+                else
+                {
+                    s.weightsMale[key] = weight;
+                    var arr = GetGenderedFastArray(def, Gender.Male, s);
+                    if (arr == null)
+                    {
+                        s.ResetCaches();
+                        arr = GetGenderedFastArray(def, Gender.Male, s);
+                    }
+                    if (arr != null && idx >= 0 && idx < arr.Length) arr[idx] = weight;
+                }
             }
-            else { s.weights[key] = weight; s.fastWeights[idx] = weight; }
+            else
+            {
+                s.weights[key] = weight;
+                var arr = GetGenderedFastArray(def, Gender.None, s);
+                if (arr == null)
+                {
+                    s.ResetCaches();
+                    arr = GetGenderedFastArray(def, Gender.None, s);
+                }
+                if (arr != null && idx >= 0 && idx < arr.Length) arr[idx] = weight;
+            }
+
+            if (def is ThingDef && ((ThingDef)def).IsApparel)
+            {
+                RefreshApparelSafetyCache(s);
+            }
         }
 
-        public bool IsDisabled(Def def, Gender gender, string raceDefName = null) => (def != null && (def.defName == "Bald" || def.defName == "NoBeard")) ? false : GetWeight(def, gender, raceDefName) <= 0f;
+        public bool IsDisabled(Def def, Gender gender, string raceDefName = null) => GetWeight(def, gender, raceDefName) <= 0f;
 
         public static string ProfilesFolder => Path.Combine(GenFilePaths.ConfigFolderPath, "NPCStyleLimiter_Profiles");
         public static string GetProfilePath(string name) => Path.Combine(ProfilesFolder, SanitizeFileName(name) + ".xml");
@@ -395,7 +575,23 @@ namespace NPCStyleLimiter
             catch (Exception e) { Log.Error("NPCStyleLimiter: Load failed: " + e.Message); return false; }
         }
 
-        private Dictionary<string, float> ReadWeightDict(XElement container) => container?.Elements("entry").ToDictionary(e => (string)e.Attribute("key"), e => (float)e.Attribute("value")) ?? new Dictionary<string, float>();
+        private Dictionary<string, float> ReadWeightDict(XElement container)
+        {
+            var dict = new Dictionary<string, float>();
+            if (container != null)
+            {
+                foreach (var e in container.Elements("entry"))
+                {
+                    string key = (string)e.Attribute("key");
+                    string valStr = (string)e.Attribute("value");
+                    if (key != null && valStr != null && float.TryParse(valStr, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float val))
+                    {
+                        dict[key] = val;
+                    }
+                }
+            }
+            return dict;
+        }
 
         public bool DeleteProfile(string name) { if (string.IsNullOrEmpty(name) || name.Equals("Default", StringComparison.OrdinalIgnoreCase) || name.Equals(currentProfileName, StringComparison.OrdinalIgnoreCase)) return false; try { string path = GetProfilePath(name); if (File.Exists(path)) File.Delete(path); return true; } catch { return false; } }
         public bool RenameProfile(string oldName, string newName)
