@@ -140,7 +140,7 @@ namespace NPCStyleLimiter
                 }
 
                 // --- LAYOUT ---
-                float sidebarWidth = 200f;
+                float sidebarWidth = 170f;
                 Rect sidebarRect = new Rect(inRect.x, inRect.y, sidebarWidth, inRect.height);
                 Rect contentRect = new Rect(sidebarRect.xMax + 10f, inRect.y, inRect.width - sidebarWidth - 10f, inRect.height);
 
@@ -262,7 +262,7 @@ namespace NPCStyleLimiter
             }
 
             // --- HEADER: DASHBOARD CARD ---
-            float headerHeight = 95f; // Fixed height supporting better titles & 2x2 layout
+            float headerHeight = 110f; // Fixed height supporting better titles & 2x2 layout
             Rect headerCard = new Rect(inRect.x, inRect.y, inRect.width, headerHeight);
             Widgets.DrawRectFast(headerCard, CardBgColor);
 
@@ -292,30 +292,30 @@ namespace NPCStyleLimiter
                 }
             }
 
-            Widgets.Label(new Rect(headerCard.x + 16f, headerCard.y + 16f, 200f, 30f), titleText);
+            Widgets.Label(new Rect(headerCard.x + 16f, headerCard.y + 20f, 160f, 30f), titleText);
             
             Text.Font = GameFont.Tiny;
             GUI.color = InactiveTextColor;
-            Widgets.Label(new Rect(headerCard.x + 16f, headerCard.y + 46f, 200f, 24f), subText);
+            Widgets.Label(new Rect(headerCard.x + 16f, headerCard.y + 54f, 160f, 40f), subText);
             
             Text.Font = GameFont.Small;
             GUI.color = Color.white;
             Text.Anchor = TextAnchor.UpperLeft;
 
             // 2. 2x2 Control Grid (Right Area)
-            float rightAreaX = headerCard.x + 225f;
-            float rightWidth = headerCard.width - 241f; // Margin on right
+            float rightAreaX = headerCard.x + 190f;
+            float rightWidth = headerCard.width - 206f; // Margin on right
             
             float col1X = rightAreaX;
-            float col2X = rightAreaX + 165f;
+            float col2X = rightAreaX + 195f;
             
-            float row1Y = headerCard.y + 14f;
-            float row2Y = headerCard.y + 48f;
+            float row1Y = headerCard.y + 22f;
+            float row2Y = headerCard.y + 62f;
 
             // Row 1, Col 1: useSpecificConfig or applyToPlayerPawns
             if (!isGlobal)
             {
-                Rect specificRect = new Rect(col1X, row1Y, 150f, 24f);
+                Rect specificRect = new Rect(col1X, row1Y, 185f, 24f);
                 bool specific = raceSettings.useSpecificConfig;
                 bool nextSpecific = DrawCustomLabeledCheckbox(specificRect, "NPCStyleLimiter_UseSpecificConfig".Translate(), specific);
                 if (nextSpecific != specific)
@@ -326,14 +326,14 @@ namespace NPCStyleLimiter
             }
             else
             {
-                Rect applyPlayerRect = new Rect(col1X, row1Y, 150f, 24f);
+                Rect applyPlayerRect = new Rect(col1X, row1Y, 185f, 24f);
                 bool applyPlayer = Settings.applyToPlayerPawns;
                 bool nextApplyPlayer = DrawCustomLabeledCheckbox(applyPlayerRect, "NPCStyleLimiter_ApplyToPlayerPawns".Translate(), applyPlayer);
                 if (nextApplyPlayer != applyPlayer) Settings.applyToPlayerPawns = nextApplyPlayer;
             }
 
             // Row 1, Col 2: useGenderConfig & gender tabs
-            Rect genderRect = new Rect(col2X, row1Y, 120f, 24f);
+            Rect genderRect = new Rect(col2X, row1Y, 135f, 24f);
             bool useGender = raceSettings.useGenderConfig;
             bool nextUseGender = DrawCustomLabeledCheckbox(genderRect, "NPCStyleLimiter_UseGenderConfig".Translate(), useGender);
             if (nextUseGender != useGender) 
@@ -344,7 +344,7 @@ namespace NPCStyleLimiter
 
             if (raceSettings.useGenderConfig)
             {
-                float genderBtnStartX = col2X + 122f;
+                float genderBtnStartX = col2X + 137f;
                 Rect maleBtn = new Rect(genderBtnStartX, row1Y, 45f, 24f);
                 Rect femaleBtn = new Rect(maleBtn.xMax + 4f, row1Y, 45f, 24f);
                 if (Widgets.ButtonText(maleBtn, "NPCStyleLimiter_Male".Translate(), editingGender == Gender.Male, true, true)) editingGender = Gender.Male;
@@ -352,7 +352,7 @@ namespace NPCStyleLimiter
             }
 
             // Row 2, Col 1: adjustGenderRatio
-            Rect ratioToggleRect = new Rect(col1X, row2Y, 150f, 24f);
+            Rect ratioToggleRect = new Rect(col1X, row2Y, 185f, 24f);
             bool adjRatio = raceSettings.adjustGenderRatio;
             bool nextAdjRatio = DrawCustomLabeledCheckbox(ratioToggleRect, "NPCStyleLimiter_AdjustGenderRatio".Translate(), adjRatio);
             if (nextAdjRatio != adjRatio) raceSettings.adjustGenderRatio = nextAdjRatio;
@@ -584,7 +584,10 @@ namespace NPCStyleLimiter
             Rect tRect = new Rect(rect.x, rect.y + (rect.height - 20f) / 2f, 36f, 20f);
             bool nextState = DrawCustomCheckbox(tRect, active);
             Text.Anchor = TextAnchor.MiddleLeft;
+            var oldFont = Text.Font;
+            Text.Font = GameFont.Tiny;
             Widgets.Label(new Rect(tRect.xMax + 8f, rect.y, rect.width - 44f, rect.height), label);
+            Text.Font = oldFont;
             Text.Anchor = TextAnchor.UpperLeft;
             return nextState;
         }

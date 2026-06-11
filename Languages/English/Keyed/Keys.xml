@@ -11,7 +11,7 @@
   <NPCStyleLimiter_SaveProfile>Save Profile</NPCStyleLimiter_SaveProfile>
   <NPCStyleLimiter_LoadManageProfiles>Load/Manage</NPCStyleLimiter_LoadManageProfiles>
   <NPCStyleLimiter_SettingsSaved>NPC Style Limiter settings saved.</NPCStyleLimiter_SettingsSaved>
-  <NPCStyleLimiter_UseGenderConfig>Configure by Gender</NPCStyleLimiter_UseGenderConfig>
+  <NPCStyleLimiter_UseGenderConfig>Split by Gender</NPCStyleLimiter_UseGenderConfig>
   <NPCStyleLimiter_Male>Male</NPCStyleLimiter_Male>
   <NPCStyleLimiter_Female>Female</NPCStyleLimiter_Female>
   <NPCStyleLimiter_AdjustGenderRatio>Adjust Gender Ratio</NPCStyleLimiter_AdjustGenderRatio>
@@ -59,7 +59,7 @@
   <NPCStyleLimiter_HomeGuideTitle>Quick Start Guide</NPCStyleLimiter_HomeGuideTitle>
   <NPCStyleLimiter_HomeGuide1>Sidebar: Switch between editing the "Global Config" and "Specific Config" for individual races on the left.</NPCStyleLimiter_HomeGuide1>
   <NPCStyleLimiter_HomeGuide2>Inheritance: A "●" indicator next to a race means specific config is active. Otherwise, it inherits the Global configuration.</NPCStyleLimiter_HomeGuide2>
-  <NPCStyleLimiter_HomeGuide3>Gender Separation: Enable "Configure by Gender" to customize separate styles and probabilities for male and female pawns.</NPCStyleLimiter_HomeGuide3>
+  <NPCStyleLimiter_HomeGuide3>Gender Separation: Enable "Split by Gender" to customize separate styles and probabilities for male and female pawns.</NPCStyleLimiter_HomeGuide3>
   <NPCStyleLimiter_HomeGuide4>Adjusting Weights: Use the sliders to adjust spawn probabilities. 1.0x is default, up to 5.0x. Turn off the toggle or drag to 0.0x to disable a style.</NPCStyleLimiter_HomeGuide4>
   <NPCStyleLimiter_HomeGuide5>Gender Ratio: Customize the male-to-female ratio of newly spawned pawns for each race.</NPCStyleLimiter_HomeGuide5>
   <NPCStyleLimiter_HomeLimitTitle>Crucial Spawning Mechanism</NPCStyleLimiter_HomeLimitTitle>
