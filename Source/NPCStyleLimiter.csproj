@@ -1,18 +1,43 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net472</TargetFramework>
+    <TargetFrameworks>net472;net10.0</TargetFrameworks>
     <AssemblyName>NPCStyleLimiter</AssemblyName>
     <RootNamespace>NPCStyleLimiter</RootNamespace>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
-    <OutputPath>..\1.6\Assemblies\</OutputPath>
-    <LangVersion>8.0</LangVersion>
+    <LangVersion>latest</LangVersion>
     <Nullable>disable</Nullable>
     <WarningsAsErrors>nullable</WarningsAsErrors>
     <Version>1.3.1</Version>
   </PropertyGroup>
 
-  <ItemGroup>
+  <!-- RimWorld 1.6 Configuration (.NET Framework 4.7.2) -->
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net472'">
+    <OutputPath>..\1.6\Assemblies\</OutputPath>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'net472'">
     <PackageReference Include="Krafs.Rimworld.Ref" Version="1.6.4518" PrivateAssets="all" />
     <PackageReference Include="Lib.Harmony" Version="2.3.3" ExcludeAssets="runtime" PrivateAssets="all" />
+  </ItemGroup>
+
+  <!-- RimWorld 1.7 Configuration (.NET 10.0) -->
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0'">
+    <OutputPath>..\1.7\Assemblies\</OutputPath>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
+    <Reference Include="Assembly-CSharp">
+      <HintPath Condition="Exists('..\..\..\Assembly-CSharp.dll')">..\..\..\Assembly-CSharp.dll</HintPath>
+      <HintPath Condition="!Exists('..\..\..\Assembly-CSharp.dll')">D:\SteamLibrary\steamapps\common\RimWorld\Assembly-CSharp.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityStubs">
+      <HintPath Condition="Exists('..\..\..\UnityStubs.dll')">..\..\..\UnityStubs.dll</HintPath>
+      <HintPath Condition="!Exists('..\..\..\UnityStubs.dll')">D:\SteamLibrary\steamapps\common\RimWorld\UnityStubs.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="0Harmony">
+      <HintPath Condition="Exists('..\..\..\..\workshop\content\294100\2009463077\1.7\Assemblies\0Harmony.dll')">..\..\..\..\workshop\content\294100\2009463077\1.7\Assemblies\0Harmony.dll</HintPath>
+      <HintPath Condition="!Exists('..\..\..\..\workshop\content\294100\2009463077\1.7\Assemblies\0Harmony.dll')">D:\SteamLibrary\steamapps\workshop\content\294100\2009463077\1.7\Assemblies\0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
   </ItemGroup>
 </Project>
